@@ -11,9 +11,11 @@ public class GISData : GISDefinitions {
     public string fileName;
     public string fileType;
     protected string path;
+    public int maxPoints; //max points to generate from file; leave at 0 for no max
     public Header header;
     public GameObject point;
-    public List<Point> points = new List<Point>();
+    public List<PointData> points = new List<PointData>();
+    protected BinaryReader br;
 
 
 
@@ -30,13 +32,12 @@ public class GISData : GISDefinitions {
         header.legacyNumberOfPointsByReturn = new uint[5];
         header.numberOfPointsByReturn = new ulong[15];
 
-        BinaryReader br = new BinaryReader(File.Open(path, FileMode.Open));
-        ReadHeader(br);
-        ReadPoints(br);
+        br = new BinaryReader(File.Open(path, FileMode.Open));
+        ReadHeader();
     }
 
 
-    void ReadHeader(BinaryReader br) {
+    void ReadHeader() {
         print("Reading Header...");
         //how many - where we start
         header.fileSignature = br.ReadChars(4); //4 - 0
@@ -97,40 +98,44 @@ public class GISData : GISDefinitions {
         print("Done!");
     }
 
-    void ReadPoints(BinaryReader br) {
+    public void ReadPoints() {
         print("Creating Points...");
         br.ReadBytes((int)header.offsetToPointData - (int)header.headerSize);
 
-
+        //xyz
+        float x, y, z;
         //create origin for normalization
-        Vector3 originReference = new Vector3(br.ReadInt32() / 100, br.ReadInt32() / 100, br.ReadInt32() / 100);
+        x = br.ReadInt32();
+        y = br.ReadInt32();
+        z = br.ReadInt32();
+        Vector3 originReference = new Vector3((x * (float)header.xScaleFactor) + (float)header.xOffset, (y * (float)header.yScaleFactor) +(float)header.yOffset, (z * (float)header.zScaleFactor) +(float)header.zOffset);
         print("Origin at: " + originReference);
-        GameObject originObject = Instantiate(point);
-        Point p = CreatePointType(br);
+        //GameObject originObject = Instantiate(point);
+        PointData p = CreatePointType();
 
         //add origin point info to points
-        p.pointObject = originObject;
+        //p.pointObject = originObject;
         p.LocalPosition = Vector3.zero;
         p.coordinates = originReference;
         points.Add(p);
-        br.ReadBytes(header.pointDataRecordLength - 12);
-
 
         print("Start time: " + System.DateTime.Now);
         //create other points around origin
         for (int i = 0; i < (header.legacyNumberOfPointRecords - 1); i++) { //(header.legacyNumberOfPointRecords - 1)
-            GameObject t = Instantiate(point);
-            p = CreatePointType(br);
 
-            p.pointObject = t;
-            p.coordinates = new Vector3((br.ReadInt32() * (float)header.xScaleFactor) + (float)header.xOffset, (br.ReadInt32() * (float)header.yScaleFactor) + (float)header.yOffset, (br.ReadInt32() * (float)header.zScaleFactor) + (float)header.zOffset);
-            br.ReadBytes(header.pointDataRecordLength - 12);
-            print(i);
-            print(p.coordinates);
-            print(originReference);
+            if(maxPoints != 0 && i > maxPoints) {
+                break;
+            }
+
+            x = br.ReadInt32();
+            y = br.ReadInt32();
+            z = br.ReadInt32();
+            //GameObject t = Instantiate(point);
+            p = CreatePointType();
+            //p.pointObject = t;
+            p.coordinates = new Vector3((x * (float)header.xScaleFactor) + (float)header.xOffset, (y * (float)header.yScaleFactor) + (float)header.yOffset, (z * (float)header.zScaleFactor) + (float)header.zOffset);
             p.LocalPosition = Normalize(originReference, p.coordinates);
             points.Add(p);
-            //p.transform.localScale = new Vector3((float)header.xScaleFactor, (float)header.yScaleFactor, (float)header.zScaleFactor);
         }
 
 
@@ -144,36 +149,192 @@ public class GISData : GISDefinitions {
         return new Vector3(point.x - origin.x, point.y - origin.y, point.z - origin.z);
     }
 
-    Point CreatePointType(BinaryReader br) {
+    PointData CreatePointType() {
+        PointData c = new PointData();
         switch (header.versionMinor) {
             //version 1.2
             case 2:
+                //things that all the formats have
+                c.intensity = br.ReadUInt16(); //2
+                c.returnInformation = br.ReadByte(); //1
+                c.classification = br.ReadByte(); //1
+                c.scanAngleRank = br.ReadByte(); //1
+                c.userData = br.ReadByte(); //1
+                c.pointSourceID = br.ReadUInt16(); //2
 
+                //get the format
                 switch (header.pointDataRecordFormat) {
                     case 0:
-                        break;
+                        return c;
                     case 1:
-                        classification1_1Point2 c = new classification1_1Point2();
-                        //fill info about c with br
-                        //br.ReadBytes(header.pointDataRecordLength - 12);
+                        br.ReadBytes(8);
+                        //c.GPSTime = br.ReadDouble(); //8
+                        return c;
+                    case 2:
+                        c.red = br.ReadUInt16(); //2
+                        c.green = br.ReadUInt16(); //2
+                        c.blue = br.ReadUInt16(); //2
+                        return c;
+                    case 3:
+                        c.GPSTime = br.ReadDouble(); //8
+                        c.red = br.ReadUInt16(); //2
+                        c.green = br.ReadUInt16(); //2
+                        c.blue = br.ReadUInt16(); //2
+                        return c;
+                }
+                break;
+            case 3:
+                //things that all the formats have
+                c.intensity = br.ReadUInt16(); //2
+                c.returnInformation = br.ReadByte(); //1
+                c.classification = br.ReadByte(); //1
+                c.scanAngleRank = br.ReadByte(); //1
+                c.userData = br.ReadByte(); //1
+                c.pointSourceID = br.ReadUInt16(); //2
+                //get the format
+                switch (header.pointDataRecordFormat) {
+                    case 0:
+                        return c;
+                    case 1:
+                        c.GPSTime = br.ReadDouble(); //8
+                        return c;
+                    case 2:
+                        c.red = br.ReadUInt16(); //2
+                        c.green = br.ReadUInt16(); //2
+                        c.blue = br.ReadUInt16(); //2
+                        return c;
+                    case 3:
+                        c.GPSTime = br.ReadDouble(); //8
+                        c.red = br.ReadUInt16(); //2
+                        c.green = br.ReadUInt16(); //2
+                        c.blue = br.ReadUInt16(); //2
+                        return c;
+                    case 4:
+                        c.GPSTime = br.ReadDouble(); //8
+                        c.wavePacketDescriptorIndex = br.ReadByte(); //1
+                        c.byteOffsetToWaveformData = br.ReadUInt64(); //8
+                        c.waveformPacketSizeInBytes = br.ReadUInt32(); //4
+                        c.returnPointWaveformLocation = br.ReadSingle(); //4
+                        c.Xt = br.ReadSingle(); //4
+                        c.Yt = br.ReadSingle(); //4
+                        c.Zt = br.ReadSingle(); //4
+                        return c;
+                    case 5:
+                        c.GPSTime = br.ReadDouble(); //8
+                        c.red = br.ReadUInt16(); //2
+                        c.green = br.ReadUInt16(); //2
+                        c.blue = br.ReadUInt16(); //2
+                        c.wavePacketDescriptorIndex = br.ReadByte(); //1
+                        c.byteOffsetToWaveformData = br.ReadUInt64(); //8
+                        c.waveformPacketSizeInBytes = br.ReadUInt32(); //4
+                        c.returnPointWaveformLocation = br.ReadSingle(); //4
+                        c.Xt = br.ReadSingle(); //4
+                        c.Yt = br.ReadSingle(); //4
+                        c.Zt = br.ReadSingle(); //4
                         return c;
                 }
 
                 break;
 
-
-            case 3:
-
-                break;
-
             case 4:
-
+                //things that all the formats have
+                c.intensity = br.ReadUInt16(); //2
+                c.returnInformation = br.ReadByte(); //1
+                if(header.pointDataRecordFormat >= 6) {
+                    c.returnInformationExtended = br.ReadByte(); //1
+                }
+                c.classification = br.ReadByte(); //1
+                c.scanAngleRank = br.ReadByte(); //1
+                c.userData = br.ReadByte(); //1
+                c.pointSourceID = br.ReadUInt16(); //2
+                
+                //get the format
+                switch (header.pointDataRecordFormat) {
+                    case 0:
+                        return c;
+                    case 1:
+                        c.GPSTime = br.ReadDouble(); //8
+                        return c;
+                    case 2:
+                        c.red = br.ReadUInt16(); //2
+                        c.green = br.ReadUInt16(); //2
+                        c.blue = br.ReadUInt16(); //2
+                        return c;
+                    case 3:
+                        c.GPSTime = br.ReadDouble(); //8
+                        c.red = br.ReadUInt16(); //2
+                        c.green = br.ReadUInt16(); //2
+                        c.blue = br.ReadUInt16(); //2
+                        return c;
+                    case 4:
+                        c.GPSTime = br.ReadDouble(); //8
+                        c.wavePacketDescriptorIndex = br.ReadByte(); //1
+                        c.byteOffsetToWaveformData = br.ReadUInt64(); //8
+                        c.waveformPacketSizeInBytes = br.ReadUInt32(); //4
+                        c.returnPointWaveformLocation = br.ReadSingle(); //4
+                        c.Xt = br.ReadSingle(); //4
+                        c.Yt = br.ReadSingle(); //4
+                        c.Zt = br.ReadSingle(); //4
+                        return c;
+                    case 5:
+                        c.GPSTime = br.ReadDouble(); //8
+                        c.red = br.ReadUInt16(); //2
+                        c.green = br.ReadUInt16(); //2
+                        c.blue = br.ReadUInt16(); //2
+                        c.wavePacketDescriptorIndex = br.ReadByte(); //1
+                        c.byteOffsetToWaveformData = br.ReadUInt64(); //8
+                        c.waveformPacketSizeInBytes = br.ReadUInt32(); //4
+                        c.returnPointWaveformLocation = br.ReadSingle(); //4
+                        c.Xt = br.ReadSingle(); //4
+                        c.Yt = br.ReadSingle(); //4
+                        c.Zt = br.ReadSingle(); //4
+                        return c;
+                    case 6:
+                        c.GPSTime = br.ReadDouble(); //8
+                        return c;
+                    case 7:
+                        c.GPSTime = br.ReadDouble(); //8
+                        c.red = br.ReadUInt16(); //2
+                        c.green = br.ReadUInt16(); //2
+                        c.blue = br.ReadUInt16(); //2
+                        return c;
+                    case 8:
+                        c.GPSTime = br.ReadDouble(); //8
+                        c.red = br.ReadUInt16(); //2
+                        c.green = br.ReadUInt16(); //2
+                        c.blue = br.ReadUInt16(); //2
+                        c.NIR = br.ReadUInt16(); //2
+                        return c;
+                    case 9:
+                        c.GPSTime = br.ReadDouble(); //8
+                        c.wavePacketDescriptorIndex = br.ReadByte(); //1
+                        c.byteOffsetToWaveformData = br.ReadUInt64(); //8
+                        c.waveformPacketSizeInBytes = br.ReadUInt32(); //4
+                        c.returnPointWaveformLocation = br.ReadSingle(); //4
+                        c.Xt = br.ReadSingle(); //4
+                        c.Yt = br.ReadSingle(); //4
+                        c.Zt = br.ReadSingle(); //4
+                        return c;
+                    case 10:
+                        c.GPSTime = br.ReadDouble(); //8
+                        c.red = br.ReadUInt16(); //2
+                        c.green = br.ReadUInt16(); //2
+                        c.blue = br.ReadUInt16(); //2
+                        c.wavePacketDescriptorIndex = br.ReadByte(); //1
+                        c.byteOffsetToWaveformData = br.ReadUInt64(); //8
+                        c.waveformPacketSizeInBytes = br.ReadUInt32(); //4
+                        c.returnPointWaveformLocation = br.ReadSingle(); //4
+                        c.Xt = br.ReadSingle(); //4
+                        c.Yt = br.ReadSingle(); //4
+                        c.Zt = br.ReadSingle(); //4
+                        return c;
+                }
                 break;
 
 
         }
-
-        return new Point();
+        print("Error in reading version! Confirm you are using 1.2, 1.3, or 1.4!");
+        return new PointData();
     }
 
 }
