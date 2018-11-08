@@ -26,7 +26,7 @@ public class Octree {
     private int depth;
 
     public Octree(Vector3 position, float size, int depth) {
-        node = new OctreeNode(position, size);
+        node = new OctreeNode(position, size, "0");
         this.depth = depth;
     }
 
@@ -34,14 +34,16 @@ public class Octree {
         //bounds of cube of node
         Vector3 position;
         float size;
+        string index;
 
         //children
         OctreeNode[] subNodes;
         List<GISDefinitions.PointData> data;
 
-        public OctreeNode(Vector3 pos, float size) {
+        public OctreeNode(Vector3 pos, float size, string index) {
             position = pos;
             this.size = size;
+            this.index = index;
         }
 
         public IEnumerable<OctreeNode> Nodes {
@@ -79,7 +81,7 @@ public class Octree {
                 } else {
                     newPos.z -= size * 0.25f;
                 }
-                subNodes[i] = new OctreeNode(newPos, size * 0.5f);
+                subNodes[i] = new OctreeNode(newPos, size * 0.5f, (index + i.ToString()));
                 if(depth > 0) {
                     subNodes[i].Subdivide(depth - 1);
                 }
