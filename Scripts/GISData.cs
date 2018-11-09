@@ -41,9 +41,8 @@ public class GISData : GISDefinitions {
     void SetOctreeBase() {
         Vector3 min = new Vector3((float)header.xMin, (float)header.yMin, (float)header.zMin);
         Vector3 max = new Vector3((float)header.xMax, (float)header.yMax, (float)header.zMax);
-        int size = Mathf.CeilToInt(Mathf.Log(header.legacyNumberOfPointRecords, 2));
         float[] ranges = new float[] { (float)(max.x - min.x), (float)(max.y - min.y), (float)(max.z - min.z) };
-        octree = new Octree((max - min / 2), Mathf.Max(ranges), size);
+        octree = new Octree(Vector3.zero, Mathf.Max(ranges), 1000);
     }
 
 
@@ -115,37 +114,28 @@ public class GISData : GISDefinitions {
         //xyz
         float x, y, z;
         //create origin for normalization
-        x = br.ReadInt32();
-        y = br.ReadInt32();
-        z = br.ReadInt32();
-        Vector3 originReference = new Vector3((x * (float)header.xScaleFactor) + (float)header.xOffset, (y * (float)header.yScaleFactor) +(float)header.yOffset, (z * (float)header.zScaleFactor) +(float)header.zOffset);
-        print("Origin at: " + originReference);
-        GameObject originObject = Instantiate(point);
-        PointData p = CreatePointType();
+        Vector3 min = new Vector3((float)header.xMin, (float)header.yMin, (float)header.zMin);
+        Vector3 max = new Vector3((float)header.xMax, (float)header.yMax, (float)header.zMax);
+        Vector3 origin = new Vector3(((max.x + min.x) / 2), ((max.y + min.y) / 2) ,((max.z + min.z) / 2));
 
-        //add origin point info to points
-        p.pointObject = originObject;
-        p.LocalPosition = Vector3.zero;
-        p.coordinates = originReference;
-        points.Add(p);
+        print("Origin at: " + origin);
 
+        PointData p;
         print("Start time: " + System.DateTime.Now);
         //create other points around origin
-        for (int i = 0; i < (header.legacyNumberOfPointRecords - 1); i++) { //(header.legacyNumberOfPointRecords - 1)
+        for (int i = 0; i < (header.legacyNumberOfPointRecords); i++) { //(header.legacyNumberOfPointRecords - 1)
 
-            if(maxPoints != 0 && i > maxPoints) {
+            if(maxPoints != 0 && i > maxPoints - 1) {
                 break;
             }
-
             x = br.ReadInt32();
             y = br.ReadInt32();
             z = br.ReadInt32();
-            GameObject t = Instantiate(point);
             p = CreatePointType();
-            p.pointObject = t;
             p.coordinates = new Vector3((x * (float)header.xScaleFactor) + (float)header.xOffset, (y * (float)header.yScaleFactor) + (float)header.yOffset, (z * (float)header.zScaleFactor) + (float)header.zOffset);
-            p.LocalPosition = Normalize(originReference, p.coordinates);
-            points.Add(p);
+            p.LocalPosition = Normalize(origin, p.coordinates);
+            //points.Add(p);
+            octree.GetRoot().AddPoint(p, octree.MaxPoints);
         }
 
 
