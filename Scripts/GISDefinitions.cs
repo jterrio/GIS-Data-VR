@@ -52,7 +52,6 @@ public class GISDefinitions : MonoBehaviour {
 
     [System.Serializable]
     public class Point {
-        public GameObject pointObject;
         protected Vector3 localPosition;
         public Vector3 coordinates;
 
@@ -62,9 +61,6 @@ public class GISDefinitions : MonoBehaviour {
             }
             set {
                 localPosition = value;
-                if (pointObject != null) {
-                    pointObject.transform.position = value;
-                }
             }
         }
     }
