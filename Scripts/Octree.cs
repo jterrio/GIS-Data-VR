@@ -47,8 +47,6 @@ public class Octree {
         set { currentMaxDepth = value; }
     }
 
-
-    [System.Serializable]
     public class OctreeNode {
         //bounds of cube of node
         private Octree tree;
@@ -114,6 +112,31 @@ public class Octree {
                     data.Add(point);
                     pointCount++;
                     
+                }
+            } else {
+                newIndex = GetIndexOfPosition(point.LocalPosition);
+                //go down path
+                subNodes[newIndex].AddPoint(point, maxPoints);
+            }
+        }
+
+        /// <summary>
+        /// Expands the tree as if the point as actually added
+        /// </summary>
+        /// <param name="point"></param>Point to simulate expansion
+        /// <param name="maxPoints"></param>Maximum number of points in a node
+        public void ExpandTree(GISData.PointData point, int maxPoints) {
+            int newIndex;
+            if (IsLeaf()) {
+                if (pointCount >= maxPoints) { //split
+                    Subdivide();
+                    pointCount = 0;
+                    newIndex = GetIndexOfPosition(point.LocalPosition);
+                    //go down path for point
+                    subNodes[newIndex].AddPoint(point, maxPoints);
+                } else { //add
+                    pointCount++;
+
                 }
             } else {
                 newIndex = GetIndexOfPosition(point.LocalPosition);

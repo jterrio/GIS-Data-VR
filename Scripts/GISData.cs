@@ -107,7 +107,12 @@ public class GISData : GISDefinitions {
         print("Done!");
     }
 
-    public void ReadPoints() {
+
+    public void BeginReadingPoints() {
+        StartCoroutine("ReadPoints");
+    }
+
+    public IEnumerator ReadPoints() {
         print("Creating Points...");
         br.ReadBytes((int)header.offsetToPointData - (int)header.headerSize);
 
@@ -134,8 +139,18 @@ public class GISData : GISDefinitions {
             p = CreatePointType();
             p.coordinates = new Vector3((x * (float)header.xScaleFactor) + (float)header.xOffset, (y * (float)header.yScaleFactor) + (float)header.yOffset, (z * (float)header.zScaleFactor) + (float)header.zOffset);
             p.LocalPosition = Normalize(origin, p.coordinates);
-            //points.Add(p);
-            octree.GetRoot().AddPoint(p, octree.MaxPoints);
+
+            //octree.GetRoot().AddPoint(p, octree.MaxPoints);
+            octree.GetRoot().ExpandTree(p, octree.MaxPoints);
+            if(i % 100000 == 0) {
+                if(maxPoints > 0 && maxPoints < header.legacyNumberOfPointRecords) {
+                    print("PERCENTAGE DONE: " + (((float)i / maxPoints) * 100) + "%");
+                } else {
+                    print("PERCENTAGE DONE: " + (((float)i / header.legacyNumberOfPointRecords) * 100) + "%");
+                }
+                
+                yield return new WaitForEndOfFrame();
+            }
         }
 
 
