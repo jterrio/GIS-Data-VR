@@ -133,7 +133,7 @@ public class Octree {
                     pointCount = 0;
                     newIndex = GetIndexOfPosition(point.LocalPosition);
                     //go down path for point
-                    subNodes[newIndex].AddPoint(point, maxPoints);
+                    subNodes[newIndex].ExpandTree(point, maxPoints);
                 } else { //add
                     pointCount++;
 
@@ -141,7 +141,7 @@ public class Octree {
             } else {
                 newIndex = GetIndexOfPosition(point.LocalPosition);
                 //go down path
-                subNodes[newIndex].AddPoint(point, maxPoints);
+                subNodes[newIndex].ExpandTree(point, maxPoints);
             }
         }
 
