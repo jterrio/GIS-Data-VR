@@ -25,7 +25,8 @@ public class Octree {
     private OctreeNode node; //root
     private int depth;
     private int maxPointSize;
-    public int currentMaxDepth = 1; 
+    public int currentMaxDepth = 1;
+    public int currentLeaves = 1;
 
     public Octree(Vector3 position, float size, int maxPointSize) {
         node = new OctreeNode(position, size, "0", this);
@@ -87,44 +88,31 @@ public class Octree {
             get { return pointCount; }
         }
 
-
         /// <summary>
-        /// Adds a point to the Octree and will split the tree accordingly
+        /// Expand every leaf to the given depth
         /// </summary>
-        /// <param name="point"></param>The point you want to add to the Octree
-        /// <param name="maxPoints"></param>Maximum number of points a node should contain
-        public void AddPoint(GISData.PointData point, int maxPoints) {
-            int newIndex;
-            if (IsLeaf()) {
-                if (data.Count >= maxPoints) { //split
-                    Subdivide();
-                    foreach (GISData.PointData p in new List<GISData.PointData>(data)) { //move each point of data into new nodes
-                        newIndex = GetIndexOfPosition(p.LocalPosition);
-                        //go down path and remove old data
-                        subNodes[newIndex].AddPoint(p, maxPoints);
-                        data.Remove(p);
-                        pointCount--;
-                    }
-                    newIndex = GetIndexOfPosition(point.LocalPosition);
-                    //go down path for point
-                    subNodes[newIndex].AddPoint(point, maxPoints);
-                } else { //add
-                    data.Add(point);
-                    pointCount++;
-                    
-                }
+        /// <param name="depth">Depth to expand every leaf to</param>
+        public void ExpandTreeDepth(int depth) {
+            if (subNodes == null && index.Length != depth) {
+                Subdivide();
+                ExpandTreeDepth(depth);
             } else {
-                newIndex = GetIndexOfPosition(point.LocalPosition);
-                //go down path
-                subNodes[newIndex].AddPoint(point, maxPoints);
+                foreach (OctreeNode leaf in subNodes) {
+                    if (leaf.index.Length != depth) {
+                        if (leaf.IsLeaf()) {
+                            Subdivide();
+                        }
+                        leaf.ExpandTreeDepth(depth);
+                    }
+                }
             }
         }
 
         /// <summary>
         /// Expands the tree as if the point as actually added
         /// </summary>
-        /// <param name="point"></param>Point to simulate expansion
-        /// <param name="maxPoints"></param>Maximum number of points in a node
+        /// <param name="point">Point to simulate expansion</param>
+        /// <param name="maxPoints">Maximum number of points in a node</param>
         public void ExpandTree(GISData.PointData point, int maxPoints) {
             int newIndex;
             if (IsLeaf()) {
@@ -148,9 +136,10 @@ public class Octree {
         /// <summary>
         /// Split the Octree at the given index and return the new node
         /// </summary>
-        /// <param name="i"></param>Index to split the Octree at
-        /// <returns></returns>
+        /// <param name="i">Index to split the Octree at</param>
+        /// <returns>OctreeNode to become a new leaf</returns>
         OctreeNode Subdivide(int i) {
+            
             Vector3 newPos = position;
             if ((i & 4) == 4) {
                 newPos.y += size * 0.25f;
@@ -174,6 +163,7 @@ public class Octree {
         /// Split Octree leaf
         /// </summary>
         void Subdivide() {
+            tree.currentLeaves += 7;
             subNodes = new OctreeNode[8];
             for(int i = 0; i < 8; i++) {
                 subNodes[i] = Subdivide(i);

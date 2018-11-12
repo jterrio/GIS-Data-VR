@@ -142,7 +142,7 @@ public class GISData : GISDefinitions {
 
             //octree.GetRoot().AddPoint(p, octree.MaxPoints);
             octree.GetRoot().ExpandTree(p, octree.MaxPoints);
-            if(i % 100000 == 0) {
+            if (i % 100000 == 0) {
                 if(maxPoints > 0 && maxPoints < header.legacyNumberOfPointRecords) {
                     print("PERCENTAGE DONE: " + (((float)i / maxPoints) * 100) + "%");
                 } else {
@@ -155,6 +155,11 @@ public class GISData : GISDefinitions {
 
 
         print("Finished creating points!");
+        print("Finish time: " + System.DateTime.Now);
+        yield return new WaitForEndOfFrame();
+
+        print("Starting to expand tree...");
+        octree.GetRoot().ExpandTreeDepth(octree.currentMaxDepth);
         print("Finish time: " + System.DateTime.Now);
 
     }
