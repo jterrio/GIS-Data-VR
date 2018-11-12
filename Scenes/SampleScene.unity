@@ -256,7 +256,7 @@ MonoBehaviour:
     m_PersistentCalls:
       m_Calls:
       - m_Target: {fileID: 1051520728}
-        m_MethodName: ReadPoints
+        m_MethodName: BeginReadingPoints
         m_Mode: 1
         m_Arguments:
           m_ObjectArgument: {fileID: 0}
@@ -648,8 +648,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: bd523563db8d75444ae3b15d68f81472, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  fileName: 255000_1916000
+  fileName: 260000_1924000
   fileType: las
+  maxPoints: 2000000
   header:
     fileSignature: 
     fileSourceID: 0
@@ -690,6 +691,9 @@ MonoBehaviour:
     numberOfPointsByReturn: 
   point: {fileID: 1308686475757576, guid: ac8388e0e69ab6d46acee73370f12b8e, type: 2}
   points: []
+  octree:
+    currentMaxDepth: 0
+    currentLeaves: 0
 --- !u!4 &1051520729
 Transform:
   m_ObjectHideFlags: 0
