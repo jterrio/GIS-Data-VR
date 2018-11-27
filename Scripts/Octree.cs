@@ -27,10 +27,12 @@ public class Octree {
     private int maxPointSize;
     public int currentMaxDepth = 1;
     public int currentLeaves = 1;
+    public float smallestTile;
 
     public Octree(Vector3 position, float size, int maxPointSize) {
         node = new OctreeNode(position, size, "0", this);
         this.maxPointSize = maxPointSize;
+        smallestTile = size;
     }
 
     /// <summary>
@@ -46,6 +48,14 @@ public class Octree {
     public int CurrentMaxDepth {
         get { return currentMaxDepth; }
         set { currentMaxDepth = value; }
+    }
+
+    /// <summary>
+    /// Returns the smallest tile size given at the deepest node in the tree
+    /// </summary>
+    public float SmallestTile {
+        get { return smallestTile; }
+        set { smallestTile = value; }
     }
 
     public class OctreeNode {
@@ -93,17 +103,18 @@ public class Octree {
         /// </summary>
         /// <param name="depth">Depth to expand every leaf to</param>
         public void ExpandTreeDepth(int depth) {
-            if (subNodes == null && index.Length != depth) {
+            if (index.Length >= depth) {
+                return;
+            }
+            if (subNodes == null) {
                 Subdivide();
-                ExpandTreeDepth(depth);
-            } else {
-                foreach (OctreeNode leaf in subNodes) {
-                    if (leaf.index.Length != depth) {
-                        if (leaf.IsLeaf()) {
-                            Subdivide();
-                        }
-                        leaf.ExpandTreeDepth(depth);
+            }
+            foreach (OctreeNode leaf in subNodes) {
+                if (leaf.index.Length < depth) {
+                    if (leaf.IsLeaf()) {
+                        leaf.Subdivide();
                     }
+                    leaf.ExpandTreeDepth(depth);
                 }
             }
         }
@@ -156,6 +167,10 @@ public class Octree {
             } else {
                 newPos.z -= size * 0.25f;
             }
+            if(size * 0.5f < tree.SmallestTile) {
+                tree.SmallestTile = size * 0.5f;
+            }
+            //Debug.Log(newPos);
             return new OctreeNode(newPos, size * 0.5f, (index + i.ToString()), tree);
         }
 
@@ -172,6 +187,7 @@ public class Octree {
                 }
             }
         }
+
 
         
 
