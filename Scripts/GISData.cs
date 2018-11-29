@@ -54,56 +54,22 @@ public class GISData : GISDefinitions {
         float tileSize = octree.SmallestTile;
         Vector3 tilePos = Normalize(origin, min);
 
-        float xCounter = 0;
-        float yCounter = 0;
-        float zCounter = 0;
         PointData p;
         int totalPoints = 0;
         Vector3 normalMin = Normalize(origin, min);
         Vector3 normalMax = Normalize(origin, max);
-        //print("Min x: " + normalMin.x);
-        //print("Max x: " + normalMax.x);
-        //print("Min y: " + normalMin.y);
-        //print("Max y: " + normalMax.y);
-        //print("Min z: " + normalMin.z);
-        //print("Max z: " + normalMax.z);
-        //print("Smallest Tile size: " + octree.SmallestTile);
-        while (normalMin.z + (octree.SmallestTile * zCounter) <= normalMax.z) {
+        br.BaseStream.Position = (int)header.offsetToPointData;
+        for (int i = 0; i < (header.legacyNumberOfPointRecords); i++) { //(header.legacyNumberOfPointRecords - 1)
+            float x = br.ReadInt32();
+            float y = br.ReadInt32();
+            float z = br.ReadInt32();
+            p = CreatePointType();
+            p.coordinates = new Vector3((x * (float)header.xScaleFactor) + (float)header.xOffset, (y * (float)header.yScaleFactor) + (float)header.yOffset, (z * (float)header.zScaleFactor) + (float)header.zOffset);
+            p.LocalPosition = Normalize(origin, p.coordinates);
+            yield return new WaitForEndOfFrame();
+            //WRITE TO FILE OR STORE
 
-            while (normalMin.y + (octree.SmallestTile * yCounter) <= normalMax.y) {
-
-
-                while (normalMin.x + (octree.SmallestTile * xCounter) <= normalMax.x) {
-                    br.BaseStream.Position = (int)header.offsetToPointData;
-                    for (int i = 0; i < (header.legacyNumberOfPointRecords); i++) { //(header.legacyNumberOfPointRecords - 1)
-                        float x = br.ReadInt32();
-                        float y = br.ReadInt32();
-                        float z = br.ReadInt32();
-                        p = CreatePointType();
-                        p.coordinates = new Vector3((x * (float)header.xScaleFactor) + (float)header.xOffset, (y * (float)header.yScaleFactor) + (float)header.yOffset, (z * (float)header.zScaleFactor) + (float)header.zOffset);
-                        p.LocalPosition = Normalize(origin, p.coordinates);
-                        if (ValidateTilePoint(normalMin.x + (octree.SmallestTile * xCounter), normalMin.y + (octree.SmallestTile * yCounter), normalMin.z + (octree.SmallestTile * zCounter), octree.SmallestTile, p.LocalPosition)) {
-                            totalPoints += 1;
-                        }
-                        //yield return new WaitForEndOfFrame();
-                        //WRITE TO FILE OR STORE
-                    }
-                    
-                    //print("Total points so far: " + totalPoints);
-                    //print(System.DateTime.Now);
-                    yield return new WaitForEndOfFrame();
-                    xCounter += 1;
-                }
-
-                yield return new WaitForEndOfFrame();
-                yCounter += 1;
-                xCounter = 0;
-            }
-            zCounter += 1;
-            yCounter = 0;
-            xCounter = 0;
         }
-
         print("Big total: " + totalPoints);
         print("Finish time: " + System.DateTime.Now);
     }
@@ -115,6 +81,7 @@ public class GISData : GISDefinitions {
         }
         return false;
     }
+
 
 
     void ReadHeader() {
