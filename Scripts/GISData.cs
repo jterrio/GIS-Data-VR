@@ -55,7 +55,6 @@ public class GISData : GISDefinitions {
         Vector3 tilePos = Normalize(origin, min);
 
         PointData p;
-        int totalPoints = 0;
         Vector3 normalMin = Normalize(origin, min);
         Vector3 normalMax = Normalize(origin, max);
         br.BaseStream.Position = (int)header.offsetToPointData;
@@ -66,11 +65,20 @@ public class GISData : GISDefinitions {
             p = CreatePointType();
             p.coordinates = new Vector3((x * (float)header.xScaleFactor) + (float)header.xOffset, (y * (float)header.yScaleFactor) + (float)header.yOffset, (z * (float)header.zScaleFactor) + (float)header.zOffset);
             p.LocalPosition = Normalize(origin, p.coordinates);
-            yield return new WaitForEndOfFrame();
-            //WRITE TO FILE OR STORE
 
+            //WRITE TO FILE OR STORE
+            Vector3 coordinate = octree.GetRoot().FindCoordinateOnOctree(p.LocalPosition);
+            //print(octree.GetRoot().FindCoordinateOnOctree(p.LocalPosition));
+            if (i % 100000 == 0) {
+                if (maxPoints > 0 && maxPoints < header.legacyNumberOfPointRecords) {
+                    print("PERCENTAGE DONE: " + (((float)i / maxPoints) * 100) + "%");
+                } else {
+                    print("PERCENTAGE DONE: " + (((float)i / header.legacyNumberOfPointRecords) * 100) + "%");
+                }
+
+                yield return new WaitForEndOfFrame();
+            }
         }
-        print("Big total: " + totalPoints);
         print("Finish time: " + System.DateTime.Now);
     }
 
@@ -178,7 +186,7 @@ public class GISData : GISDefinitions {
 
             //octree.GetRoot().AddPoint(p, octree.MaxPoints);
             octree.GetRoot().ExpandTree(p, octree.MaxPoints);
-            if (i % 1000000 == 0) {
+            if (i % 100000 == 0) {
                 if(maxPoints > 0 && maxPoints < header.legacyNumberOfPointRecords) {
                     print("PERCENTAGE DONE: " + (((float)i / maxPoints) * 100) + "%");
                 } else {
