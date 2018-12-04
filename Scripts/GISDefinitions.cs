@@ -65,6 +65,78 @@ public class GISDefinitions : MonoBehaviour {
         }
     }
 
+    public int GetSizeOfPoint(int versionMajor, int versionMinor, int pointDataRecordFormat) {
+        switch (versionMinor) {
+            //version 1.2
+            case 2:
+                //8
+                //get the format
+                switch (pointDataRecordFormat) {
+                    case 0:
+                        return 8;
+                    case 1:
+                        return 16;
+                    case 2:
+                        return 14;
+                    case 3:
+                        return 22;
+                }
+                break;
+            case 3:
+                //8
+                //get the format
+                switch (pointDataRecordFormat) {
+                    case 0:
+                        return 8;
+                    case 1:
+                        return 16;
+                    case 2:
+                        return 14;
+                    case 3:
+                        return 22;
+                    case 4:
+                        return 45;
+                    case 5:
+                        return 51;
+                }
+
+                break;
+
+            case 4:
+                //8 
+                //12 if >=6
+                //get the format
+                switch (pointDataRecordFormat) {
+                    case 0:
+                        return 8;
+                    case 1:
+                        return 16;
+                    case 2:
+                        return 14;
+                    case 3:
+                        return 22;
+                    case 4:
+                        return 45;
+                    case 5:
+                        return 51;
+                    case 6:
+                        return 20;
+                    case 7:
+                        return 26;
+                    case 8:
+                        return 28;
+                    case 9:
+                        return 49;
+                    case 10:
+                        return 55;
+                }
+                break;
+
+
+        }
+        return 0;
+    }
+
 
     //contains classification info and format each point
     [System.Serializable]

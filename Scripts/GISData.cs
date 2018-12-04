@@ -18,6 +18,7 @@ public class GISData : GISDefinitions {
     protected BinaryReader br;
     public Octree octree;
     private Vector3 min, max, origin;
+    public string uifhauadaj;
 
     
 
@@ -53,7 +54,9 @@ public class GISData : GISDefinitions {
     IEnumerator WriteToBin() {
         float tileSize = octree.SmallestTile;
         Vector3 tilePos = Normalize(origin, min);
-
+        int sizeOfBlock = GetSizeOfPoint(header.versionMajor, header.versionMinor, header.pointDataRecordFormat);
+        FileStream fs = File.Create((Application.streamingAssetsPath + "/" + fileName + ".bin"));
+        BinaryWriter bw = new BinaryWriter(fs);
         PointData p;
         Vector3 normalMin = Normalize(origin, min);
         Vector3 normalMax = Normalize(origin, max);
@@ -65,10 +68,50 @@ public class GISData : GISDefinitions {
             p = CreatePointType();
             p.coordinates = new Vector3((x * (float)header.xScaleFactor) + (float)header.xOffset, (y * (float)header.yScaleFactor) + (float)header.yOffset, (z * (float)header.zScaleFactor) + (float)header.zOffset);
             p.LocalPosition = Normalize(origin, p.coordinates);
+            if (i % 100000 == 0) {
+                if (maxPoints > 0 && maxPoints < header.legacyNumberOfPointRecords) {
+                    print("PERCENTAGE DONE: " + (((float)i / maxPoints) * 100) + "%");
+                } else {
+                    print("PERCENTAGE DONE: " + (((float)i / header.legacyNumberOfPointRecords) * 100) + "%");
+                }
+
+                yield return new WaitForEndOfFrame();
+            }
+            
 
             //WRITE TO FILE OR STORE
             Vector3 coordinate = octree.GetRoot().FindCoordinateOnOctree(p.LocalPosition);
-            //print(octree.GetRoot().FindCoordinateOnOctree(p.LocalPosition));
+            char[] xBits = Convert.ToString((int)coordinate.x, 2).ToCharArray();
+            char[] yBits = Convert.ToString((int)coordinate.y, 2).ToCharArray();
+            char[] zBits = Convert.ToString((int)coordinate.z, 2).ToCharArray();
+            char[] bitPos = new char[Mathf.Max(xBits.Length, yBits.Length, zBits.Length) * 3];
+            int currentPos = 0;
+            for(int b = 0; b < Mathf.Max(xBits.Length, yBits.Length, zBits.Length); b++) {
+                if(b > xBits.Length - 1) {
+                    bitPos[currentPos] = '0';
+                } else {
+                    bitPos[currentPos] = xBits[xBits.Length - (b + 1)];
+                }
+                currentPos += 1;
+                if (b > yBits.Length -1) {
+                    bitPos[currentPos] = '0';
+                } else {
+                    bitPos[currentPos] = yBits[yBits.Length - (b + 1)];
+                }
+                currentPos += 1;
+                if (b >zBits.Length - 1) {
+                    bitPos[currentPos] = '0';
+                } else {
+                    bitPos[currentPos] = zBits[zBits.Length - (b + 1)];
+                }
+                currentPos += 1;
+            }
+            Array.Reverse(bitPos);
+            string actualPos = new string(bitPos);
+            int realPos = Convert.ToInt32(actualPos, 2);
+            bw.BaseStream.Position = realPos * sizeOfBlock;
+
+            yield return new WaitForEndOfFrame();
             if (i % 100000 == 0) {
                 if (maxPoints > 0 && maxPoints < header.legacyNumberOfPointRecords) {
                     print("PERCENTAGE DONE: " + (((float)i / maxPoints) * 100) + "%");
@@ -183,7 +226,6 @@ public class GISData : GISDefinitions {
             p = CreatePointType();
             p.coordinates = new Vector3((x * (float)header.xScaleFactor) + (float)header.xOffset, (y * (float)header.yScaleFactor) + (float)header.yOffset, (z * (float)header.zScaleFactor) + (float)header.zOffset);
             p.LocalPosition = Normalize(origin, p.coordinates);
-
             //octree.GetRoot().AddPoint(p, octree.MaxPoints);
             octree.GetRoot().ExpandTree(p, octree.MaxPoints);
             if (i % 100000 == 0) {
@@ -209,7 +251,6 @@ public class GISData : GISDefinitions {
         yield return new WaitForEndOfFrame();
 
         StartCoroutine("WriteToBin");
-        yield return new WaitForEndOfFrame();
 
     }
 
