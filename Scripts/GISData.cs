@@ -52,15 +52,17 @@ public class GISData : GISDefinitions {
     }
 
     IEnumerator WriteToBin() {
+        BinaryReader br_pos;
+        BinaryWriter bw;
         float tileSize = octree.SmallestTile;
         Vector3 tilePos = Normalize(origin, min);
-        int sizeOfBlock = GetSizeOfPoint(header.versionMajor, header.versionMinor, header.pointDataRecordFormat);
+        int sizeOfPoint = GetSizeOfPoint(header.versionMajor, header.versionMinor, header.pointDataRecordFormat);
         FileStream fs = File.Create((Application.streamingAssetsPath + "/" + fileName + ".bin"));
-        BinaryWriter bw = new BinaryWriter(fs);
         PointData p;
         Vector3 normalMin = Normalize(origin, min);
         Vector3 normalMax = Normalize(origin, max);
         br.BaseStream.Position = (int)header.offsetToPointData;
+        fs.Close();
         for (int i = 0; i < (header.legacyNumberOfPointRecords); i++) { //(header.legacyNumberOfPointRecords - 1)
             float x = br.ReadInt32();
             float y = br.ReadInt32();
@@ -109,10 +111,34 @@ public class GISData : GISDefinitions {
             Array.Reverse(bitPos);
             string actualPos = new string(bitPos);
             int realPos = Convert.ToInt32(actualPos, 2);
-            bw.BaseStream.Position = realPos * sizeOfBlock;
+            //bw.BaseStream.Position = realPos * sizeOfBlock;
+
+            //WRITE IT
+            br_pos = new BinaryReader(fs = File.OpenRead((Application.streamingAssetsPath + "/" + fileName + ".bin")));
+            if (br_pos.BaseStream.Length < realPos * (sizeOfPoint * 1000)) { //file is not long enough, so it doesn't exist
+                br_pos.Close();
+                bw = new BinaryWriter(fs = File.OpenWrite((Application.streamingAssetsPath + "/" + fileName + ".bin")));
+                bw.BaseStream.Position = realPos * (sizeOfPoint * 1000);
+                bw.Write(1);
+                //WRITE POINT
+                bw.Close();
+                br_pos = new BinaryReader(fs = File.OpenRead((Application.streamingAssetsPath + "/" + fileName + ".bin")));
+                br_pos.BaseStream.Position = realPos * (sizeOfPoint * 1000);
+                print(br_pos.ReadByte());
+                br_pos.Close();
+                break;
+            } else {
+                int numberofPoints = br_pos.ReadInt32();
+                br_pos.Close();
+                bw = new BinaryWriter(fs = File.OpenWrite((Application.streamingAssetsPath + "/" + fileName + ".bin")));
+                bw.BaseStream.Position = realPos * (sizeOfPoint * 1000);
+                bw.Write(numberofPoints + 1);
+                //WRITE POINT
+                bw.Close();
+            }
 
             yield return new WaitForEndOfFrame();
-            if (i % 100000 == 0) {
+            if (i % 100 == 0) {
                 if (maxPoints > 0 && maxPoints < header.legacyNumberOfPointRecords) {
                     print("PERCENTAGE DONE: " + (((float)i / maxPoints) * 100) + "%");
                 } else {
