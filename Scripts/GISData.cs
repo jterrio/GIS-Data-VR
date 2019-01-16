@@ -377,7 +377,7 @@ public class GISData : GISDefinitions {
         yield return new WaitForEndOfFrame();
 
 
-        if (false) {
+        if (true) {
             StartCoroutine("WriteToBin");
         } else {
             finishedCreatingBin = true;
