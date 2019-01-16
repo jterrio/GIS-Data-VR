@@ -63,6 +63,13 @@ public class GISData : GISDefinitions {
         Vector3 normalMax = Normalize(origin, max);
         br.BaseStream.Position = (int)header.offsetToPointData;
         fs.Close();
+
+        //CREATE FILE WITH SOME N LENGTH
+        bw = new BinaryWriter(fs = File.OpenWrite((Application.streamingAssetsPath + "/" + fileName + ".bin")));
+        bw.BaseStream.Position = octree.currentLeaves * (sizeOfPoint * 1000);
+        bw.Write(0);
+        bw.Close();
+
         for (int i = 0; i < (header.legacyNumberOfPointRecords); i++) { //(header.legacyNumberOfPointRecords - 1)
             float x = br.ReadInt32();
             float y = br.ReadInt32();
@@ -113,29 +120,37 @@ public class GISData : GISDefinitions {
             int realPos = Convert.ToInt32(actualPos, 2);
             //bw.BaseStream.Position = realPos * sizeOfBlock;
 
+
+
             //WRITE IT
             br_pos = new BinaryReader(fs = File.OpenRead((Application.streamingAssetsPath + "/" + fileName + ".bin")));
-            if (br_pos.BaseStream.Length < realPos * (sizeOfPoint * 1000)) { //file is not long enough, so it doesn't exist
-                br_pos.Close();
-                bw = new BinaryWriter(fs = File.OpenWrite((Application.streamingAssetsPath + "/" + fileName + ".bin")));
-                bw.BaseStream.Position = realPos * (sizeOfPoint * 1000);
-                bw.Write(1);
-                //WRITE POINT
-                bw.Close();
-                br_pos = new BinaryReader(fs = File.OpenRead((Application.streamingAssetsPath + "/" + fileName + ".bin")));
-                br_pos.BaseStream.Position = realPos * (sizeOfPoint * 1000);
-                print(br_pos.ReadByte());
-                br_pos.Close();
-                break;
-            } else {
-                int numberofPoints = br_pos.ReadInt32();
-                br_pos.Close();
-                bw = new BinaryWriter(fs = File.OpenWrite((Application.streamingAssetsPath + "/" + fileName + ".bin")));
-                bw.BaseStream.Position = realPos * (sizeOfPoint * 1000);
-                bw.Write(numberofPoints + 1);
-                //WRITE POINT
-                bw.Close();
-            }
+            br_pos.BaseStream.Position = realPos * (sizeOfPoint * 1000);
+            int numberOfPoints = br_pos.ReadInt32();
+            print("Before: " + numberOfPoints);
+            br_pos.Close();
+            
+            bw = new BinaryWriter(fs = File.OpenWrite((Application.streamingAssetsPath + "/" + fileName + ".bin")));
+            bw.BaseStream.Position = realPos * (sizeOfPoint * 1000);
+            bw.Write(numberOfPoints + 1);
+            //WRITE POINT
+            bw.BaseStream.Position = ((realPos * (sizeOfPoint * 1000)) + (numberOfPoints * sizeOfPoint));
+            bw.Write((Double)p.coordinates.x);
+            bw.Write((Double)p.coordinates.y);
+            bw.Write((Double)p.coordinates.z);
+            bw.Close();
+
+            //DEBUG PRINT
+            br_pos = new BinaryReader(fs = File.OpenRead((Application.streamingAssetsPath + "/" + fileName + ".bin")));
+            br_pos.BaseStream.Position = realPos * (sizeOfPoint * 1000);
+            int temp = br_pos.ReadInt32();
+            print("before: " + ((realPos * (sizeOfPoint * 1000))));
+            print("after: " + ((realPos * (sizeOfPoint * 1000)) + (numberOfPoints * sizeOfPoint)));
+            br_pos.BaseStream.Position = ((realPos * (sizeOfPoint * 1000)) + (numberOfPoints * sizeOfPoint));
+            print("X: " + br_pos.ReadDouble());
+            print("Y: " + br_pos.ReadDouble());
+            print("Z: " + br_pos.ReadDouble());
+            br_pos.Close();
+
 
             yield return new WaitForEndOfFrame();
             if (i % 100 == 0) {
