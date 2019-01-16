@@ -65,6 +65,100 @@ public class GISDefinitions : MonoBehaviour {
         }
     }
 
+    public int GetSizeOfPoint(int versionMajor, int versionMinor, int pointDataRecordFormat) {
+        int toReturn = 0;
+        switch (versionMinor) {
+            //version 1.2
+            case 2:
+                //8
+                //get the format
+                switch (pointDataRecordFormat) {
+                    case 0:
+                        toReturn = 8;
+                        break;
+                    case 1:
+                        toReturn = 16;
+                        break;
+                    case 2:
+                        toReturn = 14;
+                        break;
+                    case 3:
+                        toReturn = 22;
+                        break;
+                }
+                break;
+            case 3:
+                //8
+                //get the format
+                switch (pointDataRecordFormat) {
+                    case 0:
+                        toReturn = 8;
+                        break;
+                    case 1:
+                        toReturn = 16;
+                        break;
+                    case 2:
+                        toReturn = 14;
+                        break;
+                    case 3:
+                        toReturn = 22;
+                        break;
+                    case 4:
+                        toReturn = 45;
+                        break;
+                    case 5:
+                        toReturn = 51;
+                        break;
+                }
+
+                break;
+
+            case 4:
+                //8 
+                //12 if >=6
+                //get the format
+                switch (pointDataRecordFormat) {
+                    case 0:
+                        toReturn = 8;
+                        break;
+                    case 1:
+                        toReturn =  16;
+                        break;
+                    case 2:
+                        toReturn =  14;
+                        break;
+                    case 3:
+                        toReturn =  22;
+                        break;
+                    case 4:
+                        toReturn =  45;
+                        break;
+                    case 5:
+                        toReturn =  51;
+                        break;
+                    case 6:
+                        toReturn =  20;
+                        break;
+                    case 7:
+                        toReturn =  26;
+                        break;
+                    case 8:
+                        toReturn =  28;
+                        break;
+                    case 9:
+                        toReturn =  49;
+                        break;
+                    case 10:
+                        toReturn =  55;
+                        break;
+                }
+                break;
+
+
+        }
+        return toReturn + (sizeof(double) * 3);
+    }
+
 
     //contains classification info and format each point
     [System.Serializable]
