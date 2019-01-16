@@ -23,6 +23,7 @@ public class GISData : GISDefinitions {
     private List<GameObject> gameObjectPoints = new List<GameObject>();
     public Vector3 lastCoordinatePosition;
     public List<Vector3> listOfCoor = new List<Vector3>();
+    public List<Vector3> listofTemp = new List<Vector3>();
 
     // Use this for initialization
     void Start() {
@@ -47,6 +48,7 @@ public class GISData : GISDefinitions {
             return;
         }
         Vector3 coordinate = octree.GetRoot().FindCoordinateOnOctree(player.transform.position);
+        //print(coordinate);
         if(coordinate == lastCoordinatePosition) { //no need to run code for same block if we are in it
             return;
         }
@@ -85,17 +87,18 @@ public class GISData : GISDefinitions {
         br_pos.BaseStream.Position = realPos * (sizeOfPoint * 1000);
         int numberOfPoints = br_pos.ReadInt32();
 
-        foreach(GameObject p in new List<GameObject>(gameObjectPoints)) {
+        foreach(GameObject p in gameObjectPoints) {
             Destroy(p);
         }
         gameObjectPoints.Clear();
 
 
-        for(int i = 1; i <= numberOfPoints; i++) {
-            br_pos.BaseStream.Position = ((realPos * (sizeOfPoint * 1000)) + ((i - 1) * sizeOfPoint));
+        for(int i = 0; i < numberOfPoints; i++) {
+            br_pos.BaseStream.Position = ((realPos * (sizeOfPoint * 1000)) + (((i) * sizeOfPoint)) + sizeof(int));
             GameObject temp = Instantiate(point);
             Vector3 realCoor = new Vector3((float)br_pos.ReadDouble(), (float)br_pos.ReadDouble(), (float)br_pos.ReadDouble());
             temp.transform.position = Normalize(origin, realCoor);
+            gameObjectPoints.Add(temp);
         }
 
 
@@ -203,15 +206,17 @@ public class GISData : GISDefinitions {
             bw.Write(numberOfPoints + 1);
             //WRITE POINT
             int a = (realPos * (sizeOfPoint * 1000));
-            int d = ((numberOfPoints + 1) * sizeOfPoint);
+            int d = ((numberOfPoints) * sizeOfPoint) + sizeof(int);
             int c = a + d;
 
-            bw.BaseStream.Position = ((realPos * (sizeOfPoint * 1000)) + ((numberOfPoints + 1) * sizeOfPoint));
+            bw.BaseStream.Position = ((realPos * (sizeOfPoint * 1000)) + ((numberOfPoints) * sizeOfPoint) + sizeof(int));
             bw.Write((Double)p.coordinates.x);
             bw.Write((Double)p.coordinates.y);
             bw.Write((Double)p.coordinates.z);
             bw.Close();
             fs.Close();
+
+
 
             /*
             //DEBUG PRINT
@@ -236,6 +241,10 @@ public class GISData : GISDefinitions {
                 yield return new WaitForEndOfFrame();
             }
         }
+
+        
+
+
         finishedCreatingBin = true;
         lastCoordinatePosition = new Vector3(-1f, -1f, -1f);
         print("Finish time: " + System.DateTime.Now);
@@ -368,7 +377,7 @@ public class GISData : GISDefinitions {
         yield return new WaitForEndOfFrame();
 
 
-        if (true) {
+        if (false) {
             StartCoroutine("WriteToBin");
         } else {
             finishedCreatingBin = true;

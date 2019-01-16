@@ -66,6 +66,7 @@ public class GISDefinitions : MonoBehaviour {
     }
 
     public int GetSizeOfPoint(int versionMajor, int versionMinor, int pointDataRecordFormat) {
+        int toReturn = 0;
         switch (versionMinor) {
             //version 1.2
             case 2:
@@ -73,13 +74,17 @@ public class GISDefinitions : MonoBehaviour {
                 //get the format
                 switch (pointDataRecordFormat) {
                     case 0:
-                        return 8;
+                        toReturn = 8;
+                        break;
                     case 1:
-                        return 16;
+                        toReturn = 16;
+                        break;
                     case 2:
-                        return 14;
+                        toReturn = 14;
+                        break;
                     case 3:
-                        return 22;
+                        toReturn = 22;
+                        break;
                 }
                 break;
             case 3:
@@ -87,17 +92,23 @@ public class GISDefinitions : MonoBehaviour {
                 //get the format
                 switch (pointDataRecordFormat) {
                     case 0:
-                        return 8;
+                        toReturn = 8;
+                        break;
                     case 1:
-                        return 16;
+                        toReturn = 16;
+                        break;
                     case 2:
-                        return 14;
+                        toReturn = 14;
+                        break;
                     case 3:
-                        return 22;
+                        toReturn = 22;
+                        break;
                     case 4:
-                        return 45;
+                        toReturn = 45;
+                        break;
                     case 5:
-                        return 51;
+                        toReturn = 51;
+                        break;
                 }
 
                 break;
@@ -108,33 +119,44 @@ public class GISDefinitions : MonoBehaviour {
                 //get the format
                 switch (pointDataRecordFormat) {
                     case 0:
-                        return 8;
+                        toReturn = 8;
+                        break;
                     case 1:
-                        return 16;
+                        toReturn =  16;
+                        break;
                     case 2:
-                        return 14;
+                        toReturn =  14;
+                        break;
                     case 3:
-                        return 22;
+                        toReturn =  22;
+                        break;
                     case 4:
-                        return 45;
+                        toReturn =  45;
+                        break;
                     case 5:
-                        return 51;
+                        toReturn =  51;
+                        break;
                     case 6:
-                        return 20;
+                        toReturn =  20;
+                        break;
                     case 7:
-                        return 26;
+                        toReturn =  26;
+                        break;
                     case 8:
-                        return 28;
+                        toReturn =  28;
+                        break;
                     case 9:
-                        return 49;
+                        toReturn =  49;
+                        break;
                     case 10:
-                        return 55;
+                        toReturn =  55;
+                        break;
                 }
                 break;
 
 
         }
-        return 0;
+        return toReturn + (sizeof(double) * 3);
     }
 
 
