@@ -22,8 +22,7 @@ public class GISData : GISDefinitions {
     public GameObject player;
     private List<GameObject> gameObjectPoints = new List<GameObject>();
     public Vector3 lastCoordinatePosition;
-    public List<Vector3> listOfCoor = new List<Vector3>();
-    public List<Vector3> listofTemp = new List<Vector3>();
+    public float percentage = 0f;
 
     // Use this for initialization
     void Start() {
@@ -146,11 +145,12 @@ public class GISData : GISDefinitions {
             p = CreatePointType();
             p.coordinates = new Vector3((x * (float)header.xScaleFactor) + (float)header.xOffset, (y * (float)header.yScaleFactor) + (float)header.yOffset, (z * (float)header.zScaleFactor) + (float)header.zOffset);
             p.LocalPosition = Normalize(origin, p.coordinates);
-            if (i % 100000 == 0) {
+            if (i % 10000 == 0) {
                 if (maxPoints > 0 && maxPoints < header.legacyNumberOfPointRecords) {
-                    print("PERCENTAGE DONE: " + (((float)i / maxPoints) * 100) + "%");
+                    percentage = (((float)i / maxPoints) * 100);
                 } else {
-                    print("PERCENTAGE DONE: " + (((float)i / header.legacyNumberOfPointRecords) * 100) + "%");
+                    percentage = (((float)i / header.legacyNumberOfPointRecords) * 100);
+                    //print("PERCENTAGE: " + (((float)i / header.legacyNumberOfPointRecords) * 100));
                 }
 
                 yield return new WaitForEndOfFrame();
@@ -159,9 +159,6 @@ public class GISData : GISDefinitions {
 
             //GET COORDINATE AND POSITION IN FILE
             Vector3 coordinate = octree.GetRoot().FindCoordinateOnOctree(p.LocalPosition);
-            if (!listOfCoor.Contains(coordinate)) {
-                listOfCoor.Add(coordinate);
-            }
             char[] xBits = Convert.ToString((int)coordinate.x, 2).ToCharArray();
             char[] yBits = Convert.ToString((int)coordinate.y, 2).ToCharArray();
             char[] zBits = Convert.ToString((int)coordinate.z, 2).ToCharArray();
@@ -229,17 +226,7 @@ public class GISData : GISDefinitions {
             print("Z: " + br_pos.ReadDouble());
             br_pos.Close();
             fs.Close(); */
-
             yield return new WaitForEndOfFrame();
-            if (i % 100 == 0) {
-                if (maxPoints > 0 && maxPoints < header.legacyNumberOfPointRecords) {
-                    print("PERCENTAGE DONE: " + (((float)i / maxPoints) * 100) + "%");
-                } else {
-                    print("PERCENTAGE DONE: " + (((float)i / header.legacyNumberOfPointRecords) * 100) + "%");
-                }
-
-                yield return new WaitForEndOfFrame();
-            }
         }
 
         
@@ -356,9 +343,9 @@ public class GISData : GISDefinitions {
             octree.GetRoot().ExpandTree(p, octree.MaxPoints);
             if (i % 100000 == 0) {
                 if(maxPoints > 0 && maxPoints < header.legacyNumberOfPointRecords) {
-                    print("PERCENTAGE DONE: " + (((float)i / maxPoints) * 100) + "%");
+                    percentage = (((float)i / maxPoints) * 100);
                 } else {
-                    print("PERCENTAGE DONE: " + (((float)i / header.legacyNumberOfPointRecords) * 100) + "%");
+                    percentage = (((float)i / header.legacyNumberOfPointRecords) * 100);
                 }
                 
                 yield return new WaitForEndOfFrame();
