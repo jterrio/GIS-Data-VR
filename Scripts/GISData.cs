@@ -226,7 +226,7 @@ public class GISData : GISDefinitions {
             print("Z: " + br_pos.ReadDouble());
             br_pos.Close();
             fs.Close(); */
-            yield return new WaitForEndOfFrame();
+            //return new WaitForEndOfFrame();
         }
 
         
@@ -364,7 +364,7 @@ public class GISData : GISDefinitions {
         yield return new WaitForEndOfFrame();
 
 
-        if (true) {
+        if (false) {
             StartCoroutine("WriteToBin");
         } else {
             finishedCreatingBin = true;
