@@ -27,6 +27,7 @@ public class Octree {
     public int currentMaxDepth = 1;
     public int currentLeaves = 1;
     public float smallestTile;
+    public bool hasSplit = true; //set to true for init
 
     public Octree(Vector3 position, float size, int maxPointSize) {
         node = new OctreeNode(position, size, "0", this);
@@ -263,6 +264,7 @@ public class Octree {
             int newIndex;
             if (IsLeaf()) {
                 if (pointCount >= maxPoints) { //split
+                    tree.hasSplit = true;
                     Subdivide();
                     pointCount = 0;
                     newIndex = GetIndexOfPosition(point.LocalPosition);

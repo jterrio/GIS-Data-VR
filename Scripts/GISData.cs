@@ -5,6 +5,7 @@ using System;
 using System.Runtime.InteropServices;
 using UnityEngine;
 using UnityEngine.UI;
+using System.Diagnostics;
 
 public class GISData : GISDefinitions {
 
@@ -23,6 +24,7 @@ public class GISData : GISDefinitions {
     private List<GameObject> gameObjectPoints = new List<GameObject>();
     public Vector3 lastCoordinatePosition;
     public float percentage = 0f;
+    public bool makeBin = false;
 
     // Use this for initialization
     void Start() {
@@ -51,6 +53,8 @@ public class GISData : GISDefinitions {
         if(coordinate == lastCoordinatePosition) { //no need to run code for same block if we are in it
             return;
         }
+        Stopwatch stopwatch = new Stopwatch();
+        stopwatch.Start();
         lastCoordinatePosition = coordinate;
         char[] xBits = Convert.ToString((int)coordinate.x, 2).ToCharArray();
         char[] yBits = Convert.ToString((int)coordinate.y, 2).ToCharArray();
@@ -91,7 +95,6 @@ public class GISData : GISDefinitions {
         }
         gameObjectPoints.Clear();
 
-
         for(int i = 0; i < numberOfPoints; i++) {
             br_pos.BaseStream.Position = ((realPos * (sizeOfPoint * 1000)) + (((i) * sizeOfPoint)) + sizeof(int));
             GameObject temp = Instantiate(point);
@@ -104,6 +107,12 @@ public class GISData : GISDefinitions {
 
         br_pos.Close();
         fs.Close();
+
+
+        stopwatch.Stop();
+        print("Block ID: " + coordinate);
+        print("Number of points in block: " + numberOfPoints);
+        print("Time to render points (in milliseconds): " + stopwatch.ElapsedMilliseconds);
     }
 
 
@@ -316,7 +325,6 @@ public class GISData : GISDefinitions {
 
     public IEnumerator ReadPoints() {
         print("Creating Points...");
-        br.ReadBytes((int)header.offsetToPointData - (int)header.headerSize);
 
         //xyz
         float x, y, z;
@@ -326,45 +334,54 @@ public class GISData : GISDefinitions {
         origin = new Vector3((max.x + min.x) / 2, (max.y + min.y) / 2, (max.z + min.z) / 2);
 
         PointData p;
+        int splitTimes = 0;
         print("Start time: " + System.DateTime.Now);
         //create other points around origin
-        for (int i = 0; i < (header.legacyNumberOfPointRecords); i++) { //(header.legacyNumberOfPointRecords - 1)
+        while (octree.hasSplit) {
+            octree.hasSplit = false;
+            //br.ReadBytes((int)header.offsetToPointData - (int)header.headerSize);
+            br.BaseStream.Position = (int)header.offsetToPointData;
+            for (int i = 0; i < (header.legacyNumberOfPointRecords); i++) { //(header.legacyNumberOfPointRecords - 1)
 
-            if(maxPoints != 0 && i > maxPoints - 1) {
-                break;
-            }
-            x = br.ReadInt32();
-            y = br.ReadInt32();
-            z = br.ReadInt32();
-            p = CreatePointType();
-            p.coordinates = new Vector3((x * (float)header.xScaleFactor) + (float)header.xOffset, (y * (float)header.yScaleFactor) + (float)header.yOffset, (z * (float)header.zScaleFactor) + (float)header.zOffset);
-            p.LocalPosition = Normalize(origin, p.coordinates);
-            //octree.GetRoot().AddPoint(p, octree.MaxPoints);
-            octree.GetRoot().ExpandTree(p, octree.MaxPoints);
-            if (i % 100000 == 0) {
-                if(maxPoints > 0 && maxPoints < header.legacyNumberOfPointRecords) {
-                    percentage = (((float)i / maxPoints) * 100);
-                } else {
-                    percentage = (((float)i / header.legacyNumberOfPointRecords) * 100);
+                if (maxPoints != 0 && i > maxPoints - 1) {
+                    break;
                 }
+                x = br.ReadInt32();
+                y = br.ReadInt32();
+                z = br.ReadInt32();
                 
-                yield return new WaitForEndOfFrame();
+                p = CreatePointType();
+                p.coordinates = new Vector3((x * (float)header.xScaleFactor) + (float)header.xOffset, (y * (float)header.yScaleFactor) + (float)header.yOffset, (z * (float)header.zScaleFactor) + (float)header.zOffset);
+                p.LocalPosition = Normalize(origin, p.coordinates);
+
+                octree.GetRoot().ExpandTree(p, octree.MaxPoints);
+                if (i % 100000 == 0) {
+                    if (maxPoints > 0 && maxPoints < header.legacyNumberOfPointRecords) {
+                        percentage = (((float)i / maxPoints) * 100);
+                    } else {
+                        percentage = (((float)i / header.legacyNumberOfPointRecords) * 100);
+                    }
+
+                    yield return new WaitForEndOfFrame();
+                }
+            }
+            octree.GetRoot().ExpandTreeDepth(octree.CurrentMaxDepth);
+            if (octree.hasSplit) {
+                splitTimes += 1;
             }
         }
 
-
-        print("Finished creating points!");
+        print("Finished creating points and tree!");
+        print("Split " + splitTimes + " times!");
         print("Finish time: " + System.DateTime.Now);
-        print("Starting to expand tree...");
         yield return new WaitForEndOfFrame();
 
-        octree.GetRoot().ExpandTreeDepth(octree.CurrentMaxDepth);
-        print("Finish time: " + System.DateTime.Now);
-        print("Creating tile files...");
-        yield return new WaitForEndOfFrame();
+        
 
 
-        if (false) {
+        if (makeBin) {
+            print("Creating tile files...");
+            yield return new WaitForEndOfFrame();
             StartCoroutine("WriteToBin");
         } else {
             finishedCreatingBin = true;
