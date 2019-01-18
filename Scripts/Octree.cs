@@ -239,6 +239,7 @@ public class Octree {
         /// </summary>
         /// <param name="depth">Depth to expand every leaf to</param>
         public void ExpandTreeDepth(int depth) {
+            pointCount = 0;
             if (index.Length >= depth) {
                 return;
             }
