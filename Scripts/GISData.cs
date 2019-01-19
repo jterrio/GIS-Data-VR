@@ -15,7 +15,7 @@ public class GISData : GISDefinitions {
     public int maxPoints; //max points to generate from file; leave at 0 for no max
     public Header header;
     public GameObject point;
-    public List<PointData> points = new List<PointData>();
+    public int points;
     protected BinaryReader br;
     public Octree octree;
     private Vector3 min, max, origin;
@@ -25,7 +25,8 @@ public class GISData : GISDefinitions {
     public Vector3 lastCoordinatePosition;
     public float percentage = 0f;
     public bool makeBin = false;
-    public List<Vector3> positionList = new List<Vector3>();
+    public List<int> positionList = new List<int>();
+    public List<PointData> positionCount = new List<PointData>();
 
     // Use this for initialization
     void Start() {
@@ -39,7 +40,7 @@ public class GISData : GISDefinitions {
         header.numberOfPointsByReturn = new ulong[15];
    
         br = new BinaryReader(File.Open(path, FileMode.Open));
-        
+           
         ReadHeader();
         SetOctreeBase();
     }
@@ -143,12 +144,16 @@ public class GISData : GISDefinitions {
         br.BaseStream.Position = (int)header.offsetToPointData;
         fs.Close();
 
+        int numberofmismatch = 0;
+
         //CREATE FILE WITH SOME N LENGTH
         bw = new BinaryWriter(fs = File.OpenWrite((Application.streamingAssetsPath + "/" + fileName + ".bin")));
         bw.BaseStream.Position = (octree.currentLeaves * (Int64)(sizeOfPoint * 1000));
         bw.Write(0);
         bw.Close();
         fs.Close();
+
+        
 
         for (int i = 0; i < (header.legacyNumberOfPointRecords); i++) { //(header.legacyNumberOfPointRecords - 1)
             float x = br.ReadInt32();
@@ -167,8 +172,10 @@ public class GISData : GISDefinitions {
 
                 yield return null;
             }
-            
 
+
+
+           
             //GET COORDINATE AND POSITION IN FILE
             Vector3 coordinate = octree.GetRoot().FindCoordinateOnOctree(p.LocalPosition);
             char[] xBits = Convert.ToString((int)coordinate.x, 2).ToCharArray();
@@ -201,7 +208,9 @@ public class GISData : GISDefinitions {
             int realPos = Convert.ToInt32(actualPos, 2);
             //bw.BaseStream.Position = realPos * sizeOfBlock;
             Int64 a = (realPos * (Int64)(sizeOfPoint * 1000));
-               
+
+
+
 
 
             //WRITE IT
@@ -211,7 +220,7 @@ public class GISData : GISDefinitions {
             br_pos.Close();
             fs.Close();
 
-            
+
             Int64 c = a + (((numberOfPoints) * sizeOfPoint) + sizeof(int));
 
             bw = new BinaryWriter(fs = File.OpenWrite((Application.streamingAssetsPath + "/" + fileName + ".bin")));
@@ -238,6 +247,30 @@ public class GISData : GISDefinitions {
             br_pos.Close();
             fs.Close(); */
             //return 0;
+            
+            if (coordinate == new Vector3(3, 0, 7)) {
+                positionCount.Add(p);
+            }
+            if (numberOfPoints > 1000) {
+                Octree.OctreeNode oc1 = octree.GetRoot().GetLeafFromExpandedTree(p);
+                Octree.OctreeNode oc2 = octree.GetRoot().FindLeafOnOctree(p.LocalPosition);
+                foreach (PointData pp in positionCount) {
+                    Octree.OctreeNode oc3 = octree.GetRoot().GetLeafFromExpandedTree(pp);
+                    Octree.OctreeNode oc4 = octree.GetRoot().FindLeafOnOctree(pp.LocalPosition);
+                    if(oc1 != oc3) {
+                        oc1 = octree.GetRoot().GetLeafFromExpandedTree(p);
+                        oc3 = octree.GetRoot().GetLeafFromExpandedTree(pp);
+                    }
+                }
+
+
+
+                print("Over 1000 in bin at " + i);
+                print("Coordinate at: " + coordinate);
+                print("Number of mismatch: " + numberofmismatch);
+                break;
+            }
+
         }
 
         
@@ -246,6 +279,7 @@ public class GISData : GISDefinitions {
         finishedCreatingBin = true;
         lastCoordinatePosition = new Vector3(-1f, -1f, -1f);
         print("Finish time: " + System.DateTime.Now);
+        print("Number of match: " + numberofmismatch);
 
     }
 
@@ -316,7 +350,7 @@ public class GISData : GISDefinitions {
             }
         }
 
-
+        points = (int)header.legacyNumberOfPointRecords;
         print("Done!");
     }
 

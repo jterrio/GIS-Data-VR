@@ -571,6 +571,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 880019967}
+  - component: {fileID: 880019968}
   m_Layer: 0
   m_Name: Player
   m_TagString: Untagged
@@ -592,6 +593,19 @@ Transform:
   m_Father: {fileID: 0}
   m_RootOrder: 5
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &880019968
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 880019966}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: fb9de1657b89ae948bbe8e901e993421, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  speed: 30
 --- !u!1 &891969758
 GameObject:
   m_ObjectHideFlags: 0
@@ -720,7 +734,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: bd523563db8d75444ae3b15d68f81472, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  fileName: 249000_1903000
+  fileName: 253000_1922000
   fileType: las
   maxPoints: 0
   header:
@@ -767,7 +781,12 @@ MonoBehaviour:
     currentMaxDepth: 0
     currentLeaves: 0
     smallestTile: 0
+    hasSplit: 0
   player: {fileID: 880019966}
+  lastCoordinatePosition: {x: 0, y: 0, z: 0}
+  percentage: 0
+  makeBin: 1
+  positionList: []
 --- !u!4 &1051520729
 Transform:
   m_ObjectHideFlags: 0
