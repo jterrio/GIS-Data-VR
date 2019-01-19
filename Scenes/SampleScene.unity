@@ -776,7 +776,7 @@ MonoBehaviour:
     numberOfPointRecords: 0
     numberOfPointsByReturn: 
   point: {fileID: 1308686475757576, guid: ac8388e0e69ab6d46acee73370f12b8e, type: 3}
-  points: []
+  points: 0
   octree:
     currentMaxDepth: 0
     currentLeaves: 0
@@ -785,8 +785,9 @@ MonoBehaviour:
   player: {fileID: 880019966}
   lastCoordinatePosition: {x: 0, y: 0, z: 0}
   percentage: 0
-  makeBin: 1
-  positionList: []
+  makeBin: 0
+  positionList: 
+  positionCount: []
 --- !u!4 &1051520729
 Transform:
   m_ObjectHideFlags: 0

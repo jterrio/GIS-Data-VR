@@ -58,6 +58,52 @@ public class GISData : GISDefinitions {
         Stopwatch stopwatch = new Stopwatch();
         stopwatch.Start();
         lastCoordinatePosition = coordinate;
+        int sizeOfPoint = GetSizeOfPoint(header.versionMajor, header.versionMinor, header.pointDataRecordFormat);
+        FileStream fs;
+        BinaryReader br_pos = new BinaryReader(fs = File.OpenRead((Application.streamingAssetsPath + "/" + fileName + ".bin")));
+        List<Vector3> positionsToDraw = new List<Vector3>();
+        positionsToDraw.Add(coordinate);
+
+
+
+
+        foreach (GameObject p in gameObjectPoints) {
+            Destroy(p);
+        }
+        gameObjectPoints.Clear();
+
+        int totalPointsRendered = 0;
+        foreach (Vector3 position in positionsToDraw) {
+            int realPos = GetRealPosition(position);
+            Int64 a = realPos * (Int64)(sizeOfPoint * 1000);
+            if(a >= br_pos.BaseStream.Length) {
+                continue;
+            }
+            br_pos.BaseStream.Position = a;
+            int numberOfPoints = br_pos.ReadInt32();
+            totalPointsRendered += numberOfPoints;
+            
+            for (int i = 0; i < numberOfPoints; i++) {
+                br_pos.BaseStream.Position = (a + (((i) * sizeOfPoint)) + sizeof(int));
+                GameObject temp = Instantiate(point);
+                Vector3 realCoor = new Vector3((float)br_pos.ReadDouble(), (float)br_pos.ReadDouble(), (float)br_pos.ReadDouble());
+                temp.transform.position = Normalize(origin, realCoor);
+                gameObjectPoints.Add(temp);
+            }
+        }
+
+
+        br_pos.Close();
+        fs.Close();
+
+
+        stopwatch.Stop();
+        print("Total points rendered: " + totalPointsRendered);
+        print("Time to render points (in milliseconds): " + stopwatch.ElapsedMilliseconds);
+    }
+
+
+    int GetRealPosition(Vector3 coordinate) {
         char[] xBits = Convert.ToString((int)coordinate.x, 2).ToCharArray();
         char[] yBits = Convert.ToString((int)coordinate.y, 2).ToCharArray();
         char[] zBits = Convert.ToString((int)coordinate.z, 2).ToCharArray();
@@ -86,37 +132,7 @@ public class GISData : GISDefinitions {
         Array.Reverse(bitPos);
         string actualPos = new string(bitPos);
         int realPos = Convert.ToInt32(actualPos, 2);
-        int sizeOfPoint = GetSizeOfPoint(header.versionMajor, header.versionMinor, header.pointDataRecordFormat);
-        FileStream fs;
-        BinaryReader br_pos = new BinaryReader(fs = File.OpenRead((Application.streamingAssetsPath + "/" + fileName + ".bin")));
-        Int64 a = realPos * (Int64)(sizeOfPoint * 1000);
-        br_pos.BaseStream.Position = a;
-        int numberOfPoints = br_pos.ReadInt32();
-
-        foreach(GameObject p in gameObjectPoints) {
-            Destroy(p);
-        }
-        gameObjectPoints.Clear();
-
-
-        for(int i = 0; i < numberOfPoints; i++) {
-            br_pos.BaseStream.Position = (a + (((i) * sizeOfPoint)) + sizeof(int));
-            GameObject temp = Instantiate(point);
-            Vector3 realCoor = new Vector3((float)br_pos.ReadDouble(), (float)br_pos.ReadDouble(), (float)br_pos.ReadDouble());
-            temp.transform.position = Normalize(origin, realCoor);
-            gameObjectPoints.Add(temp);
-        }
-
-
-
-        br_pos.Close();
-        fs.Close();
-
-
-        stopwatch.Stop();
-        print("Block ID: " + coordinate);
-        print("Number of points in block: " + numberOfPoints);
-        print("Time to render points (in milliseconds): " + stopwatch.ElapsedMilliseconds);
+        return realPos;
     }
 
 
@@ -216,6 +232,17 @@ public class GISData : GISDefinitions {
             //WRITE IT
             br_pos = new BinaryReader(fs = File.OpenRead((Application.streamingAssetsPath + "/" + fileName + ".bin")));
             br_pos.BaseStream.Position = a;
+            if(i == 9) {
+                Octree.OctreeNode oc5 = octree.GetRoot().GetLeafFromExpandedTree(p);
+            }
+
+            if(a > br_pos.BaseStream.Length) {
+                print("Trying to get to: " + a);
+                print("Realpos: " + realPos);
+                print("Length: " + br_pos.BaseStream.Length);
+                print("Coordinate: " + coordinate);
+                print("On iteration: " + i);
+            }
             int numberOfPoints = br_pos.ReadInt32();
             br_pos.Close();
             fs.Close();
@@ -245,12 +272,13 @@ public class GISData : GISDefinitions {
             print("Y: " + br_pos.ReadDouble());
             print("Z: " + br_pos.ReadDouble());
             br_pos.Close();
-            fs.Close(); */
+            fs.Close();
             //return 0;
             
             if (coordinate == new Vector3(3, 0, 7)) {
                 positionCount.Add(p);
             }
+            */
             if (numberOfPoints > 1000) {
                 Octree.OctreeNode oc1 = octree.GetRoot().GetLeafFromExpandedTree(p);
                 Octree.OctreeNode oc2 = octree.GetRoot().FindLeafOnOctree(p.LocalPosition);
@@ -270,6 +298,7 @@ public class GISData : GISDefinitions {
                 print("Number of mismatch: " + numberofmismatch);
                 break;
             }
+            
 
         }
 
