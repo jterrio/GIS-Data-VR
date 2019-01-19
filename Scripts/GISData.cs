@@ -25,6 +25,7 @@ public class GISData : GISDefinitions {
     public Vector3 lastCoordinatePosition;
     public float percentage = 0f;
     public bool makeBin = false;
+    public List<Vector3> positionList = new List<Vector3>();
 
     // Use this for initialization
     void Start() {
@@ -87,7 +88,8 @@ public class GISData : GISDefinitions {
         int sizeOfPoint = GetSizeOfPoint(header.versionMajor, header.versionMinor, header.pointDataRecordFormat);
         FileStream fs;
         BinaryReader br_pos = new BinaryReader(fs = File.OpenRead((Application.streamingAssetsPath + "/" + fileName + ".bin")));
-        br_pos.BaseStream.Position = realPos * (sizeOfPoint * 1000);
+        Int64 a = realPos * (Int64)(sizeOfPoint * 1000);
+        br_pos.BaseStream.Position = a;
         int numberOfPoints = br_pos.ReadInt32();
 
         foreach(GameObject p in gameObjectPoints) {
@@ -95,8 +97,9 @@ public class GISData : GISDefinitions {
         }
         gameObjectPoints.Clear();
 
+
         for(int i = 0; i < numberOfPoints; i++) {
-            br_pos.BaseStream.Position = ((realPos * (sizeOfPoint * 1000)) + (((i) * sizeOfPoint)) + sizeof(int));
+            br_pos.BaseStream.Position = (a + (((i) * sizeOfPoint)) + sizeof(int));
             GameObject temp = Instantiate(point);
             Vector3 realCoor = new Vector3((float)br_pos.ReadDouble(), (float)br_pos.ReadDouble(), (float)br_pos.ReadDouble());
             temp.transform.position = Normalize(origin, realCoor);
@@ -142,7 +145,7 @@ public class GISData : GISDefinitions {
 
         //CREATE FILE WITH SOME N LENGTH
         bw = new BinaryWriter(fs = File.OpenWrite((Application.streamingAssetsPath + "/" + fileName + ".bin")));
-        bw.BaseStream.Position = octree.currentLeaves * (sizeOfPoint * 1000);
+        bw.BaseStream.Position = (octree.currentLeaves * (Int64)(sizeOfPoint * 1000));
         bw.Write(0);
         bw.Close();
         fs.Close();
@@ -162,7 +165,7 @@ public class GISData : GISDefinitions {
                     //print("PERCENTAGE: " + (((float)i / header.legacyNumberOfPointRecords) * 100));
                 }
 
-                yield return new WaitForEndOfFrame();
+                yield return null;
             }
             
 
@@ -197,32 +200,31 @@ public class GISData : GISDefinitions {
             string actualPos = new string(bitPos);
             int realPos = Convert.ToInt32(actualPos, 2);
             //bw.BaseStream.Position = realPos * sizeOfBlock;
-
+            Int64 a = (realPos * (Int64)(sizeOfPoint * 1000));
+               
 
 
             //WRITE IT
             br_pos = new BinaryReader(fs = File.OpenRead((Application.streamingAssetsPath + "/" + fileName + ".bin")));
-            br_pos.BaseStream.Position = realPos * (sizeOfPoint * 1000);
+            br_pos.BaseStream.Position = a;
             int numberOfPoints = br_pos.ReadInt32();
             br_pos.Close();
             fs.Close();
 
+            
+            Int64 c = a + (((numberOfPoints) * sizeOfPoint) + sizeof(int));
+
             bw = new BinaryWriter(fs = File.OpenWrite((Application.streamingAssetsPath + "/" + fileName + ".bin")));
-            bw.BaseStream.Position = realPos * (sizeOfPoint * 1000);
+            bw.BaseStream.Position = a;
             bw.Write(numberOfPoints + 1);
             //WRITE POINT
-            int a = (realPos * (sizeOfPoint * 1000));
-            int d = ((numberOfPoints) * sizeOfPoint) + sizeof(int);
-            int c = a + d;
 
-            bw.BaseStream.Position = ((realPos * (sizeOfPoint * 1000)) + ((numberOfPoints) * sizeOfPoint) + sizeof(int));
+            bw.BaseStream.Position = c;
             bw.Write((Double)p.coordinates.x);
             bw.Write((Double)p.coordinates.y);
             bw.Write((Double)p.coordinates.z);
             bw.Close();
             fs.Close();
-
-
 
             /*
             //DEBUG PRINT
@@ -235,7 +237,7 @@ public class GISData : GISDefinitions {
             print("Z: " + br_pos.ReadDouble());
             br_pos.Close();
             fs.Close(); */
-            //return new WaitForEndOfFrame();
+            //return 0;
         }
 
         
@@ -354,6 +356,11 @@ public class GISData : GISDefinitions {
                 p.coordinates = new Vector3((x * (float)header.xScaleFactor) + (float)header.xOffset, (y * (float)header.yScaleFactor) + (float)header.yOffset, (z * (float)header.zScaleFactor) + (float)header.zOffset);
                 p.LocalPosition = Normalize(origin, p.coordinates);
 
+                if(i == 1) {
+                    print(p.LocalPosition.x + " " + p.LocalPosition.y + " " + p.LocalPosition.z);
+                }
+
+
                 octree.GetRoot().ExpandTree(p, octree.MaxPoints);
                 if (i % 100000 == 0) {
                     if (maxPoints > 0 && maxPoints < header.legacyNumberOfPointRecords) {
@@ -362,7 +369,7 @@ public class GISData : GISDefinitions {
                         percentage = (((float)i / header.legacyNumberOfPointRecords) * 100);
                     }
 
-                    yield return new WaitForEndOfFrame();
+                    yield return null;
                 }
             }
             octree.GetRoot().ExpandTreeDepth(octree.CurrentMaxDepth);
@@ -374,14 +381,14 @@ public class GISData : GISDefinitions {
         print("Finished creating points and tree!");
         print("Split " + splitTimes + " times!");
         print("Finish time: " + System.DateTime.Now);
-        yield return new WaitForEndOfFrame();
+        yield return null;
 
         
 
 
         if (makeBin) {
             print("Creating tile files...");
-            yield return new WaitForEndOfFrame();
+            yield return null;
             StartCoroutine("WriteToBin");
         } else {
             finishedCreatingBin = true;

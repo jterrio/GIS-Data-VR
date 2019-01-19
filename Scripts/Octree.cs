@@ -86,63 +86,63 @@ public class Octree {
                     if (subNodes[0].IsLeaf()) {
                         return returnVector;
                     }
-                    return subNodes[0].FindCoordinateOnOctreeRecursive(returnVector, point, tree.currentMaxDepth / 2);
+                    return subNodes[0].FindCoordinateOnOctreeRecursive(returnVector, point, Mathf.FloorToInt(tree.currentMaxDepth / 2));
                 case 1:
                     //ADD (0, 0, N)
                     returnVector = new Vector3(returnVector.x, returnVector.y, returnVector.z + tree.currentMaxDepth);
                     if (subNodes[1].IsLeaf()) {
                         return returnVector;
                     }
-                    return subNodes[1].FindCoordinateOnOctreeRecursive(returnVector, point, tree.currentMaxDepth / 2);
+                    return subNodes[1].FindCoordinateOnOctreeRecursive(returnVector, point, Mathf.FloorToInt(tree.currentMaxDepth / 2));
                 case 2:
                     //ADD (N, 0, 0)
                     returnVector = new Vector3(returnVector.x + tree.currentMaxDepth, returnVector.y, returnVector.z);
                     if (subNodes[2].IsLeaf()) {
                         return returnVector;
                     }
-                    return subNodes[2].FindCoordinateOnOctreeRecursive(returnVector, point, tree.currentMaxDepth / 2);
+                    return subNodes[2].FindCoordinateOnOctreeRecursive(returnVector, point, Mathf.FloorToInt(tree.currentMaxDepth / 2));
                 case 3:
                     //ADD (N, 0, N)
                     returnVector = new Vector3(returnVector.x + tree.currentMaxDepth, returnVector.y, returnVector.z + tree.currentMaxDepth);
                     if (subNodes[3].IsLeaf()) {
                         return returnVector;
                     }
-                    return subNodes[3].FindCoordinateOnOctreeRecursive(returnVector, point, tree.currentMaxDepth / 2);
+                    return subNodes[3].FindCoordinateOnOctreeRecursive(returnVector, point, Mathf.FloorToInt(tree.currentMaxDepth / 2));
                 case 4:
                     //ADD (0, N, 0)
                     returnVector = new Vector3(returnVector.x, returnVector.y + tree.currentMaxDepth, returnVector.z);
                     if (subNodes[4].IsLeaf()) {
                         return returnVector;
                     }
-                    return subNodes[4].FindCoordinateOnOctreeRecursive(returnVector, point, tree.currentMaxDepth / 2);
+                    return subNodes[4].FindCoordinateOnOctreeRecursive(returnVector, point, Mathf.FloorToInt(tree.currentMaxDepth / 2));
                 case 5:
                     //ADD (0, N, N)
                     returnVector = new Vector3(returnVector.x, returnVector.y + tree.currentMaxDepth, returnVector.z + tree.currentMaxDepth);
                     if (subNodes[5].IsLeaf()) {
                         return returnVector;
                     }
-                    return subNodes[5].FindCoordinateOnOctreeRecursive(returnVector, point, tree.currentMaxDepth / 2);
+                    return subNodes[5].FindCoordinateOnOctreeRecursive(returnVector, point, Mathf.FloorToInt(tree.currentMaxDepth / 2));
                 case 6:
                     //ADD (N, N, 0)
                     returnVector = new Vector3(returnVector.x + tree.currentMaxDepth, returnVector.y + tree.currentMaxDepth, returnVector.z);
                     if (subNodes[6].IsLeaf()) {
                         return returnVector;
                     }
-                    return subNodes[6].FindCoordinateOnOctreeRecursive(returnVector, point, tree.currentMaxDepth / 2);
+                    return subNodes[6].FindCoordinateOnOctreeRecursive(returnVector, point, Mathf.FloorToInt(tree.currentMaxDepth / 2));
                 case 7:
                     //ADD (N, N, N)
                     returnVector = new Vector3(returnVector.x + tree.currentMaxDepth, returnVector.y + tree.currentMaxDepth, returnVector.z + tree.currentMaxDepth);
                     if (subNodes[7].IsLeaf()) {
                         return returnVector;
                     }
-                    return subNodes[7].FindCoordinateOnOctreeRecursive(returnVector, point, tree.currentMaxDepth / 2);
+                    return subNodes[7].FindCoordinateOnOctreeRecursive(returnVector, point, Mathf.FloorToInt(tree.currentMaxDepth / 2));
                 default:
                     //ADD (N, N, N)
                     returnVector = new Vector3(returnVector.x + tree.currentMaxDepth, returnVector.y + tree.currentMaxDepth, returnVector.z + tree.currentMaxDepth);
                     if (subNodes[7].IsLeaf()) {
                         return returnVector;
                     }
-                    return subNodes[7].FindCoordinateOnOctreeRecursive(returnVector, point, tree.currentMaxDepth / 2);
+                    return subNodes[7].FindCoordinateOnOctreeRecursive(returnVector, point, Mathf.FloorToInt(tree.currentMaxDepth / 2));
             }
         }
 
