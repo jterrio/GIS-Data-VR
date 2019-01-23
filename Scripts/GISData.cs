@@ -27,6 +27,8 @@ public class GISData : GISDefinitions {
     public bool makeBin = false;
     public List<int> positionList = new List<int>();
     public List<PointData> positionCount = new List<PointData>();
+    private List<Vector3> positionsToDraw = new List<Vector3>();
+    public int radiusToDraw = 1;
 
     // Use this for initialization
     void Start() {
@@ -50,9 +52,23 @@ public class GISData : GISDefinitions {
         if (!finishedCreatingBin) {
             return;
         }
+        DrawPoints();
+    }
+
+
+    private void OnDrawGizmos() {
+        //return;
+        Gizmos.color = new Color(1, 0, 0, 1f);
+        foreach (Vector3 v in positionsToDraw) {
+            Octree.OctreeNode oc = octree.GetRoot().GetNodeAtCoordinate(v);
+            Gizmos.DrawWireCube(oc.Position, new Vector3(octree.smallestTile, octree.smallestTile, octree.smallestTile));
+        }
+    }
+
+    void DrawPoints() {
         Vector3 coordinate = octree.GetRoot().FindCoordinateOnOctree(player.transform.position);
         //print(coordinate);
-        if(coordinate == lastCoordinatePosition) { //no need to run code for same block if we are in it
+        if (coordinate == lastCoordinatePosition) { //no need to run code for same block if we are in it
             return;
         }
         Stopwatch stopwatch = new Stopwatch();
@@ -61,10 +77,25 @@ public class GISData : GISDefinitions {
         int sizeOfPoint = GetSizeOfPoint(header.versionMajor, header.versionMinor, header.pointDataRecordFormat);
         FileStream fs;
         BinaryReader br_pos = new BinaryReader(fs = File.OpenRead((Application.streamingAssetsPath + "/" + fileName + ".bin")));
-        List<Vector3> positionsToDraw = new List<Vector3>();
+        positionsToDraw.Clear();
         positionsToDraw.Add(coordinate);
+        int x = (int)coordinate.x + radiusToDraw;
+        int y = (int)coordinate.y + radiusToDraw;
+        int z = (int)coordinate.z + radiusToDraw;
 
+        while(x >= ((int)coordinate.x - radiusToDraw)) {
 
+            while (y >= ((int)coordinate.y - radiusToDraw)) {
+                while (z >= ((int)coordinate.z - radiusToDraw)) {
+                    positionsToDraw.Add(new Vector3(x, y, z));
+                    z--;
+                }
+                y--;
+                z = (int)coordinate.z + radiusToDraw;
+            }
+            x--;
+            y = (int)coordinate.y + radiusToDraw;
+        }
 
 
         foreach (GameObject p in gameObjectPoints) {
@@ -76,13 +107,13 @@ public class GISData : GISDefinitions {
         foreach (Vector3 position in positionsToDraw) {
             int realPos = GetRealPosition(position);
             Int64 a = realPos * (Int64)(sizeOfPoint * 1000);
-            if(a >= br_pos.BaseStream.Length) {
+            if (a >= br_pos.BaseStream.Length || a < 0) {
                 continue;
             }
             br_pos.BaseStream.Position = a;
             int numberOfPoints = br_pos.ReadInt32();
             totalPointsRendered += numberOfPoints;
-            
+
             for (int i = 0; i < numberOfPoints; i++) {
                 br_pos.BaseStream.Position = (a + (((i) * sizeOfPoint)) + sizeof(int));
                 GameObject temp = Instantiate(point);
@@ -160,7 +191,7 @@ public class GISData : GISDefinitions {
         br.BaseStream.Position = (int)header.offsetToPointData;
         fs.Close();
 
-        int numberofmismatch = 0;
+
 
         //CREATE FILE WITH SOME N LENGTH
         bw = new BinaryWriter(fs = File.OpenWrite((Application.streamingAssetsPath + "/" + fileName + ".bin")));
@@ -232,9 +263,6 @@ public class GISData : GISDefinitions {
             //WRITE IT
             br_pos = new BinaryReader(fs = File.OpenRead((Application.streamingAssetsPath + "/" + fileName + ".bin")));
             br_pos.BaseStream.Position = a;
-            if(i == 9) {
-                Octree.OctreeNode oc5 = octree.GetRoot().GetLeafFromExpandedTree(p);
-            }
 
             if(a > br_pos.BaseStream.Length) {
                 print("Trying to get to: " + a);
@@ -280,22 +308,9 @@ public class GISData : GISDefinitions {
             }
             */
             if (numberOfPoints > 1000) {
-                Octree.OctreeNode oc1 = octree.GetRoot().GetLeafFromExpandedTree(p);
-                Octree.OctreeNode oc2 = octree.GetRoot().FindLeafOnOctree(p.LocalPosition);
-                foreach (PointData pp in positionCount) {
-                    Octree.OctreeNode oc3 = octree.GetRoot().GetLeafFromExpandedTree(pp);
-                    Octree.OctreeNode oc4 = octree.GetRoot().FindLeafOnOctree(pp.LocalPosition);
-                    if(oc1 != oc3) {
-                        oc1 = octree.GetRoot().GetLeafFromExpandedTree(p);
-                        oc3 = octree.GetRoot().GetLeafFromExpandedTree(pp);
-                    }
-                }
-
-
 
                 print("Over 1000 in bin at " + i);
                 print("Coordinate at: " + coordinate);
-                print("Number of mismatch: " + numberofmismatch);
                 break;
             }
             
@@ -308,7 +323,6 @@ public class GISData : GISDefinitions {
         finishedCreatingBin = true;
         lastCoordinatePosition = new Vector3(-1f, -1f, -1f);
         print("Finish time: " + System.DateTime.Now);
-        print("Number of match: " + numberofmismatch);
 
     }
 

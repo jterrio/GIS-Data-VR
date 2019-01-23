@@ -422,7 +422,6 @@ public class Octree {
 
         public OctreeNode GetLeafFromExpandedTree(GISData.PointData point) {
             if (IsLeaf()) {
-                pointCount++;
                 return this;
             } else {
                 int newIndex = GetIndexOfPosition(point.LocalPosition);
@@ -563,6 +562,119 @@ public class Octree {
 
             }
             return index;
+        }
+
+        public OctreeNode GetNodeAtCoordinate(Vector3 coordinate) {
+            OctreeNode returnNode = this;
+            List<int> path = GetPathToCoordinate(coordinate);
+            while (!returnNode.IsLeaf()) {
+                int i = path[0];
+                path.RemoveAt(0);
+                returnNode = returnNode.subNodes[i];
+            }
+
+            return returnNode;
+        }
+
+        List<int> GetPathToCoordinate(Vector3 coordinate) {
+            List<int> path = new List<int>();
+
+            int x = (int)coordinate.x;
+            int y = (int)coordinate.y;
+            int z = (int)coordinate.z;
+
+            List<int> xComps = new List<int>();
+            List<int> yComps = new List<int>();
+            List<int> zComps = new List<int>();
+            int initDepth = (int)Mathf.Pow(2, tree.currentMaxDepth - 2);
+
+            //break down X
+            int depthCalc = initDepth;
+            while (true) {
+                int index = x - depthCalc;
+                if (index >= 0) {
+                    x -= depthCalc;
+                    xComps.Add(depthCalc);
+                }
+                if(depthCalc == 1) {
+                    break;
+                }
+                depthCalc = depthCalc / 2;
+            }
+
+            //break down Y
+            depthCalc = initDepth;
+            while (true) {
+                int index = y - depthCalc;
+                if (index >= 0) {
+                    y -= depthCalc;
+                    yComps.Add(depthCalc);
+                }
+                if (depthCalc == 1) {
+                    break;
+                }
+                depthCalc = depthCalc / 2;
+            }
+
+            //break down Z
+            depthCalc = initDepth;
+            while (true) {
+                int index = z - depthCalc;
+                if (index >= 0) {
+                    z -= depthCalc;
+                    zComps.Add(depthCalc);
+                }
+                if (depthCalc == 1) {
+                    break;
+                }
+                depthCalc = depthCalc / 2;
+            }
+
+
+            //Solve duplicates
+            depthCalc = initDepth;
+            bool xHas = false;
+            bool yHas = false;
+            bool zHas = false;
+            while (depthCalc != 0) {
+                if (xComps.Contains(depthCalc)) {
+                    xHas = true;
+                }
+                if (yComps.Contains(depthCalc)) {
+                    yHas = true;
+                }
+                if (zComps.Contains(depthCalc)) {
+                    zHas = true;
+                }
+                if (!xHas && !yHas && !zHas) { //(0, 0, 0) - 0
+                    path.Add(0);
+                } else if (!xHas && !yHas && zHas) { //(0, 0, N) - 1
+                    path.Add(1);
+                } else if (xHas && !yHas && !zHas) { //(N, 0, 0) - 2
+                    path.Add(2);
+                } else if (xHas && !yHas && zHas) { //(N, 0, N) - 3
+                    path.Add(3);
+                } else if (!xHas && yHas && !zHas) { //(0, N, 0) - 4
+                    path.Add(4);
+                } else if (!xHas && yHas && zHas) { //(0, N, N) - 5
+                    path.Add(5);
+                } else if (xHas && yHas && !zHas) { //(N, N, 0) - 6
+                    path.Add(6);
+                } else if (xHas && yHas && zHas) { //(N, N, N) - 7
+                    path.Add(7);
+                }
+
+                if (depthCalc == 1) {
+                    break;
+                }
+                depthCalc = depthCalc / 2;
+
+                xHas = false;
+                yHas = false;
+                zHas = false;
+            }
+
+            return path;
         }
 
     }

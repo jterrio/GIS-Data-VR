@@ -788,6 +788,7 @@ MonoBehaviour:
   makeBin: 0
   positionList: 
   positionCount: []
+  radiusToDraw: 0
 --- !u!4 &1051520729
 Transform:
   m_ObjectHideFlags: 0
