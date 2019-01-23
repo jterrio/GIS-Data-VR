@@ -138,18 +138,12 @@ public class GISData : GISDefinitions {
 
     void AddFOV() {
         //Vector3 cameraDirection = octree.GetRoot().GetNodeAtCoordinate(lastCoordinatePosition).Position + Camera.main.gameObject.transform.forward * octree.smallestTile * viewDistance;
-
-        Vector3 upperLeft = Camera.main.ViewportToWorldPoint(new Vector3(0, 1, Camera.main.nearClipPlane)) * viewDistance;
-        Vector3 upperRight = Camera.main.ViewportToWorldPoint(new Vector3(1, 1, Camera.main.nearClipPlane)) * viewDistance;
-        Vector3 bottomLeft = Camera.main.ViewportToWorldPoint(new Vector3(0, 0, Camera.main.nearClipPlane)) * viewDistance;
-        Vector3 bottomRight = Camera.main.ViewportToWorldPoint(new Vector3(1, 0, Camera.main.nearClipPlane)) * viewDistance;
-        //positionsToDraw.Add(octree.GetRoot().FindCoordinateOnOctree(cameraDirection));
-
-        positionsToDraw.Add(octree.GetRoot().FindCoordinateOnOctree(upperLeft));
-        return;
-        positionsToDraw.Add(octree.GetRoot().FindCoordinateOnOctree(upperRight));
-        positionsToDraw.Add(octree.GetRoot().FindCoordinateOnOctree(bottomLeft));
-        positionsToDraw.Add(octree.GetRoot().FindCoordinateOnOctree(bottomRight));
+        Vector3[] frustumCorners = new Vector3[4];
+        Camera.main.CalculateFrustumCorners(new Rect(0, 0, 1, 1), Camera.main.farClipPlane, Camera.MonoOrStereoscopicEye.Mono, frustumCorners);
+        for (int i = 0; i < 4; i++) {
+            var worldSpaceCorner = Camera.main.transform.TransformVector(frustumCorners[i]);
+            UnityEngine.Debug.DrawRay(Camera.main.transform.position, worldSpaceCorner, Color.blue, 10f);
+        }
 
     }
 
