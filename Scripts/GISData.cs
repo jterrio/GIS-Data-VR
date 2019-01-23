@@ -28,7 +28,8 @@ public class GISData : GISDefinitions {
     public List<int> positionList = new List<int>();
     public List<PointData> positionCount = new List<PointData>();
     private List<Vector3> positionsToDraw = new List<Vector3>();
-    public int radiusToDraw = 1;
+    public int radiusToDraw = 0;
+    public int viewDistance = 2;
 
     // Use this for initialization
     void Start() {
@@ -79,6 +80,7 @@ public class GISData : GISDefinitions {
         BinaryReader br_pos = new BinaryReader(fs = File.OpenRead((Application.streamingAssetsPath + "/" + fileName + ".bin")));
         positionsToDraw.Clear();
         positionsToDraw.Add(coordinate);
+        AddFOV();
         int x = (int)coordinate.x + radiusToDraw;
         int y = (int)coordinate.y + radiusToDraw;
         int z = (int)coordinate.z + radiusToDraw;
@@ -131,6 +133,24 @@ public class GISData : GISDefinitions {
         stopwatch.Stop();
         print("Total points rendered: " + totalPointsRendered);
         print("Time to render points (in milliseconds): " + stopwatch.ElapsedMilliseconds);
+    }
+
+
+    void AddFOV() {
+        //Vector3 cameraDirection = octree.GetRoot().GetNodeAtCoordinate(lastCoordinatePosition).Position + Camera.main.gameObject.transform.forward * octree.smallestTile * viewDistance;
+
+        Vector3 upperLeft = Camera.main.ViewportToWorldPoint(new Vector3(0, 1, Camera.main.nearClipPlane)) * viewDistance;
+        Vector3 upperRight = Camera.main.ViewportToWorldPoint(new Vector3(1, 1, Camera.main.nearClipPlane)) * viewDistance;
+        Vector3 bottomLeft = Camera.main.ViewportToWorldPoint(new Vector3(0, 0, Camera.main.nearClipPlane)) * viewDistance;
+        Vector3 bottomRight = Camera.main.ViewportToWorldPoint(new Vector3(1, 0, Camera.main.nearClipPlane)) * viewDistance;
+        //positionsToDraw.Add(octree.GetRoot().FindCoordinateOnOctree(cameraDirection));
+
+        positionsToDraw.Add(octree.GetRoot().FindCoordinateOnOctree(upperLeft));
+        return;
+        positionsToDraw.Add(octree.GetRoot().FindCoordinateOnOctree(upperRight));
+        positionsToDraw.Add(octree.GetRoot().FindCoordinateOnOctree(bottomLeft));
+        positionsToDraw.Add(octree.GetRoot().FindCoordinateOnOctree(bottomRight));
+
     }
 
 
