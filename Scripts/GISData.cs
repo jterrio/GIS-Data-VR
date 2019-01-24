@@ -28,8 +28,8 @@ public class GISData : GISDefinitions {
     public List<int> positionList = new List<int>();
     public List<PointData> positionCount = new List<PointData>();
     private List<Vector3> positionsToDraw = new List<Vector3>();
-    public int radiusToDraw = 0;
     public int viewDistance = 2;
+    public GameObject holderObject;
 
     // Use this for initialization
     void Start() {
@@ -80,24 +80,10 @@ public class GISData : GISDefinitions {
         BinaryReader br_pos = new BinaryReader(fs = File.OpenRead((Application.streamingAssetsPath + "/" + fileName + ".bin")));
         positionsToDraw.Clear();
         positionsToDraw.Add(coordinate);
+        positionsToDraw.Add(octree.GetRoot().FindCoordinateOnOctree(max));
+        positionsToDraw.Add(octree.GetRoot().FindCoordinateOnOctree(min));
+        positionsToDraw.Add(octree.GetRoot().FindCoordinateOnOctree(origin));
         AddFOV();
-        int x = (int)coordinate.x + radiusToDraw;
-        int y = (int)coordinate.y + radiusToDraw;
-        int z = (int)coordinate.z + radiusToDraw;
-
-        while(x >= ((int)coordinate.x - radiusToDraw)) {
-
-            while (y >= ((int)coordinate.y - radiusToDraw)) {
-                while (z >= ((int)coordinate.z - radiusToDraw)) {
-                    positionsToDraw.Add(new Vector3(x, y, z));
-                    z--;
-                }
-                y--;
-                z = (int)coordinate.z + radiusToDraw;
-            }
-            x--;
-            y = (int)coordinate.y + radiusToDraw;
-        }
 
 
         foreach (GameObject p in gameObjectPoints) {
@@ -108,6 +94,10 @@ public class GISData : GISDefinitions {
         int totalPointsRendered = 0;
         foreach (Vector3 position in positionsToDraw) {
             int realPos = GetRealPosition(position);
+            GameObject p = Instantiate(holderObject);
+            p.name = realPos.ToString();
+            gameObjectPoints.Add(p);
+
             Int64 a = realPos * (Int64)(sizeOfPoint * 1000);
             if (a >= br_pos.BaseStream.Length || a < 0) {
                 continue;
@@ -121,7 +111,7 @@ public class GISData : GISDefinitions {
                 GameObject temp = Instantiate(point);
                 Vector3 realCoor = new Vector3((float)br_pos.ReadDouble(), (float)br_pos.ReadDouble(), (float)br_pos.ReadDouble());
                 temp.transform.position = Normalize(origin, realCoor);
-                gameObjectPoints.Add(temp);
+                temp.transform.parent = p.transform;
             }
         }
 
@@ -142,7 +132,8 @@ public class GISData : GISDefinitions {
         Camera.main.CalculateFrustumCorners(new Rect(0, 0, 1, 1), Camera.main.farClipPlane, Camera.MonoOrStereoscopicEye.Mono, frustumCorners);
         for (int i = 0; i < 4; i++) {
             var worldSpaceCorner = Camera.main.transform.TransformVector(frustumCorners[i]);
-            UnityEngine.Debug.DrawRay(Camera.main.transform.position, worldSpaceCorner, Color.blue, 10f);
+            positionsToDraw.Add(player.transform.position + worldSpaceCorner);
+            UnityEngine.Debug.DrawLine(player.transform.position, worldSpaceCorner, Color.blue, 1f);
         }
 
     }

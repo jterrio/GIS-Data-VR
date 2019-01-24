@@ -38,7 +38,7 @@ RenderSettings:
   m_ReflectionIntensity: 1
   m_CustomReflection: {fileID: 0}
   m_Sun: {fileID: 0}
-  m_IndirectSpecularColor: {r: 0.44657844, g: 0.49641222, b: 0.57481694, a: 1}
+  m_IndirectSpecularColor: {r: 0.44657874, g: 0.49641258, b: 0.5748172, a: 1}
   m_UseRadianceAmbientProbe: 0
 --- !u!157 &3
 LightmapSettings:
@@ -602,10 +602,10 @@ MonoBehaviour:
   m_GameObject: {fileID: 880019966}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: f99230f9818da214ea8aaeb7a6267ae4, type: 3}
+  m_Script: {fileID: 11500000, guid: fb9de1657b89ae948bbe8e901e993421, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  speed: 5
+  speed: 15
 --- !u!1 &891969758
 GameObject:
   m_ObjectHideFlags: 0
@@ -734,7 +734,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: bd523563db8d75444ae3b15d68f81472, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  fileName: 249000_1903000
+  fileName: 253000_1922000
   fileType: las
   maxPoints: 0
   header:
@@ -790,6 +790,8 @@ MonoBehaviour:
   positionCount: []
   radiusToDraw: 0
   viewDistance: 2
+  holderObject: {fileID: 2186573086238210433, guid: 64c8b5b01840a4a458f38780d62a5cac,
+    type: 3}
 --- !u!4 &1051520729
 Transform:
   m_ObjectHideFlags: 0
