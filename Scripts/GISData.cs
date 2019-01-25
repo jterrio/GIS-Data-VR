@@ -42,9 +42,9 @@ public class GISData : GISDefinitions {
         header.generatingSoftware = new char[32];
         header.legacyNumberOfPointsByReturn = new uint[5];
         header.numberOfPointsByReturn = new ulong[15];
-   
+
         br = new BinaryReader(File.Open(path, FileMode.Open));
-           
+
         ReadHeader();
         SetOctreeBase();
     }
@@ -66,9 +66,9 @@ public class GISData : GISDefinitions {
         foreach (Vector3 v in positionsToDraw) {
             Octree.OctreeNode oc = octree.GetRoot().GetNodeAtCoordinate(v);
             Gizmos.DrawWireCube(oc.Position, new Vector3(octree.smallestTile, octree.smallestTile, octree.smallestTile));
-            
+
         }
-        Gizmos.DrawWireCube(origin, max - min);
+        //Gizmos.DrawWireCube(origin, max - min);
     }
 
     void DrawPoints() {
@@ -117,11 +117,9 @@ public class GISData : GISDefinitions {
             Int64 realPos = GetRealPosition(position);
             GameObject p = Instantiate(holderObject);
             p.name = realPos.ToString();
-            if(realPos < 0) {
-                realPos = realPos;
-            }
             p.transform.position = octree.GetRoot().GetNodeAtCoordinate(position).Position;
             gameObjectPoints.Add(p);
+            p.SetActive(true);
 
             Int64 a = realPos * (Int64)(sizeOfPoint * 1000);
             if (a >= br_pos.BaseStream.Length || a < 0) {
@@ -129,7 +127,7 @@ public class GISData : GISDefinitions {
             }
             br_pos.BaseStream.Position = a;
             int numberOfPoints = br_pos.ReadInt32();
-            if(numberOfPoints <= 0) {
+            if (numberOfPoints <= 0) {
                 gameObjectPoints.Remove(p);
                 Destroy(p);
                 continue;
@@ -161,11 +159,11 @@ public class GISData : GISDefinitions {
         int y = (int)lastCoordinatePosition.y + viewDistance;
         int z = (int)lastCoordinatePosition.z + viewDistance;
 
-        while(z >= -((int)lastCoordinatePosition.z + viewDistance)) {
-            while(y >= -((int)lastCoordinatePosition.y + viewDistance)) {
-                while(x >= -((int)lastCoordinatePosition.x + viewDistance)) {
+        while (z >= ((int)lastCoordinatePosition.z - viewDistance)) {
+            while (y >= ((int)lastCoordinatePosition.y - viewDistance)) {
+                while (x >= ((int)lastCoordinatePosition.x - viewDistance)) {
                     if (x >= 0 && y >= 0 && z >= 0) {
-                        if (IsVisible(octree.GetRoot().GetNodeAtCoordinate(new Vector3(x, y, z)).Position) && !positionsToDraw.Contains(new Vector3(x, y, z))) {
+                        if ((IsVisible(octree.GetRoot().GetNodeAtCoordinate(new Vector3(x, y, z)).Position) && !positionsToDraw.Contains(new Vector3(x, y, z)))) {
                             positionsToDraw.Add(new Vector3(x, y, z));
                         }
                     }
@@ -183,7 +181,7 @@ public class GISData : GISDefinitions {
     bool IsVisible(Vector3 point) {
         bool isVisible = false;
         Vector3 cameraPoint = Camera.main.WorldToViewportPoint(point);
-        if((cameraPoint.x >= -0.2 && cameraPoint.x <= 1.2) && (cameraPoint.y >= -0.2 && cameraPoint.y <= 1.2) && (cameraPoint.z > -0.1)) {
+        if ((cameraPoint.x >= 0 && cameraPoint.x <= 1) && (cameraPoint.y >= 0 && cameraPoint.y <= 1) && (cameraPoint.z > 0)) {
             isVisible = true;
         }
         return isVisible;
@@ -191,7 +189,7 @@ public class GISData : GISDefinitions {
 
 
     Int64 GetRealPosition(Vector3 coordinate) {
-        
+
 
         char[] xBits = Convert.ToString((int)coordinate.x, 2).ToCharArray();
         char[] yBits = Convert.ToString((int)coordinate.y, 2).ToCharArray();
@@ -243,31 +241,35 @@ public class GISData : GISDefinitions {
         float tileSize = octree.SmallestTile;
         Vector3 tilePos = Normalize(origin, min);
         int sizeOfPoint = GetSizeOfPoint(header.versionMajor, header.versionMinor, header.pointDataRecordFormat);
-        FileStream fs = File.Create((Application.streamingAssetsPath + "/" + fileName + ".bin"));
+        var folder = Directory.CreateDirectory(Application.streamingAssetsPath + "/" + fileName);
+
+        //AT MAX DEPTH
+        folder = Directory.CreateDirectory(Application.streamingAssetsPath + "/" + fileName + "/" + fileName + "-0");
+        FileStream fs = File.Create(Application.streamingAssetsPath + "/" + fileName + "/" + fileName + "-0" + "/" + fileName + "-0" + ".bin");
         PointData pd;
         Vector3 normalMin = Normalize(origin, min);
         Vector3 normalMax = Normalize(origin, max);
         br.BaseStream.Position = (int)header.offsetToPointData;
         fs.Close();
 
-
-
         //CREATE FILE WITH SOME N LENGTH
-        bw = new BinaryWriter(fs = File.OpenWrite((Application.streamingAssetsPath + "/" + fileName + ".bin")));
+        bw = new BinaryWriter(fs = File.OpenWrite((Application.streamingAssetsPath + "/" + fileName + "/" + fileName + "-0" + "/" + fileName + "-0" + ".bin")));
         bw.BaseStream.Position = (octree.currentLeaves * (Int64)(sizeOfPoint * 1000));
         bw.Write(0);
         bw.Close();
         fs.Close();
-
+        //yield return null;
 
         int numberOfPointsRead = 0;
         List<PointData> pointsToWrite = new List<PointData>();
+
+        //WRITE AND CREATE A FILE AT DEPTH = MAX
         while (numberOfPointsRead < (header.legacyNumberOfPointRecords)) { //(header.legacyNumberOfPointRecords - 1)
             float x = br.ReadInt32();
             float y = br.ReadInt32();
             float z = br.ReadInt32();
             numberOfPointsRead++;
-            pd = CreatePointType();
+            pd = CreatePointType(br);
             pd.coordinates = new Vector3((x * (float)header.xScaleFactor) + (float)header.xOffset, (y * (float)header.yScaleFactor) + (float)header.yOffset, (z * (float)header.zScaleFactor) + (float)header.zOffset);
             pd.LocalPosition = Normalize(origin, pd.coordinates);
             pointsToWrite.Add(pd);
@@ -278,17 +280,12 @@ public class GISData : GISDefinitions {
                     percentage = (((float)numberOfPointsRead / header.legacyNumberOfPointRecords) * 100);
                     //print("PERCENTAGE: " + (((float)i / header.legacyNumberOfPointRecords) * 100));
                 }
-
                 yield return null;
             }
-
-
+            yield return null;
             if (pointsToWrite.Count < 1000) {
                 continue;
             }
-
-
-
 
             //GET COORDINATE AND POSITION IN FILE
             foreach (PointData p in pointsToWrite) {
@@ -324,12 +321,8 @@ public class GISData : GISDefinitions {
                 //bw.BaseStream.Position = realPos * sizeOfBlock;
                 Int64 a = (realPos * (Int64)(sizeOfPoint * 1000));
 
-
-
-
-
                 //WRITE IT
-                br_pos = new BinaryReader(fs = File.OpenRead((Application.streamingAssetsPath + "/" + fileName + ".bin")));
+                br_pos = new BinaryReader(fs = File.OpenRead((Application.streamingAssetsPath + "/" + fileName + "/" + fileName + "-0" + "/" + fileName + "-0" + ".bin")));
                 br_pos.BaseStream.Position = a;
 
                 if (a > br_pos.BaseStream.Length) {
@@ -346,7 +339,7 @@ public class GISData : GISDefinitions {
 
                 Int64 c = a + (((numberOfPoints) * sizeOfPoint) + sizeof(int));
 
-                bw = new BinaryWriter(fs = File.OpenWrite((Application.streamingAssetsPath + "/" + fileName + ".bin")));
+                bw = new BinaryWriter(fs = File.OpenWrite((Application.streamingAssetsPath + "/" + fileName + "/" + fileName + "-0" + "/" + fileName + "-0" + ".bin")));
                 bw.BaseStream.Position = a;
                 bw.Write(numberOfPoints + 1);
                 //WRITE POINT
@@ -358,23 +351,10 @@ public class GISData : GISDefinitions {
                 bw.Close();
                 fs.Close();
 
-                /*
-                //DEBUG PRINT
-                br_pos = new BinaryReader(fs = File.OpenRead((Application.streamingAssetsPath + "/" + fileName + ".bin")));
-                br_pos.BaseStream.Position = realPos * (sizeOfPoint * 1000);
-                int temp = br_pos.ReadInt32();
-                br_pos.BaseStream.Position = ((realPos * (sizeOfPoint * 1000)) + ((numberOfPoints + 1) * sizeOfPoint));
-                print("X: " + br_pos.ReadDouble());
-                print("Y: " + br_pos.ReadDouble());
-                print("Z: " + br_pos.ReadDouble());
-                br_pos.Close();
-                fs.Close();
-                //return 0;
 
-                if (coordinate == new Vector3(3, 0, 7)) {
-                    positionCount.Add(p);
-                }
-                */
+
+
+
                 if (numberOfPoints > 1000) {
 
                     print("Over 1000 in bin at " + numberOfPoints);
@@ -385,7 +365,145 @@ public class GISData : GISDefinitions {
             pointsToWrite.Clear();
         }
 
-        
+        //WRITE AND CREATE A FILE AT DEPTH = MAX - 1
+        pointsToWrite.Clear();
+
+        numberOfPointsRead = 0;
+        int nodePosition = 0;
+        int numberOfNodesRead = 0;
+        folder = Directory.CreateDirectory(Application.streamingAssetsPath + "/" + fileName + "/" + fileName + "-1");
+        fs = File.Create(Application.streamingAssetsPath + "/" + fileName + "/" + fileName + "-1" + "/" + fileName + "-1" + ".bin");
+        br_pos = new BinaryReader(fs = File.OpenRead((Application.streamingAssetsPath + "/" + fileName + "/" + fileName + "-0" + "/" + fileName + "-0" + ".bin")));
+        while (numberOfPointsRead < header.legacyNumberOfPointRecords) {
+            br_pos.BaseStream.Position = numberOfNodesRead * (Int64)(sizeOfPoint * 500);
+            while (true) { //(header.legacyNumberOfPointRecords - 1)
+                if (pointsToWrite.Count >= 500) {
+                    nodePosition++;
+                    break;
+                }
+                numberOfPointsRead += br_pos.ReadInt32();
+
+                float x = (float)br_pos.ReadDouble();
+                float y = (float)br_pos.ReadDouble();
+                float z = (float)br_pos.ReadDouble();
+
+
+                pd = CreatePointType(br_pos);
+                pd.coordinates = new Vector3((x * (float)header.xScaleFactor) + (float)header.xOffset, (y * (float)header.yScaleFactor) + (float)header.yOffset, (z * (float)header.zScaleFactor) + (float)header.zOffset);
+                pd.LocalPosition = Normalize(origin, pd.coordinates);
+                pointsToWrite.Add(pd);
+                if (numberOfPointsRead % 10000 == 0) {
+                    if (maxPoints > 0 && maxPoints < header.legacyNumberOfPointRecords) {
+                        percentage = (((float)numberOfPointsRead / maxPoints) * 100);
+                    } else {
+                        percentage = (((float)numberOfPointsRead / header.legacyNumberOfPointRecords) * 100);
+                    }
+                    yield return null;
+                }
+            }
+
+            Int64 realPos = GetRealPosition(octree.GetRoot().FindCoordinateOnOctree(pointsToWrite[0].LocalPosition));
+            //GET COORDINATE AND POSITION IN FILE
+            Int64 a = (realPos * (Int64)(sizeOfPoint * 500));
+
+            //WRITE IT
+            br_pos.Close();
+            fs.Close();
+            int numberOfPoints = pointsToWrite.Count;
+            Int64 c = a + (((numberOfPoints) * sizeOfPoint) + sizeof(int));
+
+            bw = new BinaryWriter(fs = File.OpenWrite((Application.streamingAssetsPath + "/" + fileName + "/" + fileName + "-1" + "/" + fileName + "-1" + ".bin")));
+            bw.BaseStream.Position = a;
+            bw.Write(numberOfPoints);
+            //WRITE POINT
+            foreach (PointData p in pointsToWrite) {
+                bw.Write((Double)p.coordinates.x);
+                bw.Write((Double)p.coordinates.y);
+                bw.Write((Double)p.coordinates.z);
+                bw.Write(p.classification);
+            }
+            bw.Close();
+            fs.Close();
+            if (numberOfPoints > 1000) {
+                print("Over 1000 in bin at " + numberOfPoints);
+                print("At level 1");
+                break;
+            }
+            pointsToWrite.Clear();
+            nodePosition += (4 - numberOfNodesRead);
+            numberOfNodesRead = 0;
+        }
+
+
+        //WRITE AND CREATE A FILE AT DEPTH = MAX - 2
+        pointsToWrite.Clear();
+
+        numberOfPointsRead = 0;
+        nodePosition = 0;
+        numberOfNodesRead = 0;
+        folder = Directory.CreateDirectory(Application.streamingAssetsPath + "/" + fileName + "/" + fileName + "-2");
+        fs = File.Create(Application.streamingAssetsPath + "/" + fileName + "/" + fileName + "-2" + "/" + fileName + "-2" + ".bin");
+        br_pos = new BinaryReader(fs = File.OpenRead((Application.streamingAssetsPath + "/" + fileName + "/" + fileName + "-1" + "/" + fileName + "-1" + ".bin")));
+        while (numberOfPointsRead < header.legacyNumberOfPointRecords) {
+            br_pos.BaseStream.Position = numberOfNodesRead * (Int64)(sizeOfPoint * 500);
+            while (true) { //(header.legacyNumberOfPointRecords - 1)
+                if (pointsToWrite.Count >= 250) {
+                    numberOfNodesRead++;
+                    nodePosition++;
+                    break;
+                }
+                numberOfPointsRead += br_pos.ReadInt32();
+
+                float x = (float)br_pos.ReadDouble();
+                float y = (float)br_pos.ReadDouble();
+                float z = (float)br_pos.ReadDouble();
+
+
+                pd = CreatePointType(br_pos);
+                pd.coordinates = new Vector3((x * (float)header.xScaleFactor) + (float)header.xOffset, (y * (float)header.yScaleFactor) + (float)header.yOffset, (z * (float)header.zScaleFactor) + (float)header.zOffset);
+                pd.LocalPosition = Normalize(origin, pd.coordinates);
+                pointsToWrite.Add(pd);
+                if (numberOfPointsRead % 10000 == 0) {
+                    if (maxPoints > 0 && maxPoints < header.legacyNumberOfPointRecords) {
+                        percentage = (((float)numberOfPointsRead / maxPoints) * 100);
+                    } else {
+                        percentage = (((float)numberOfPointsRead / header.legacyNumberOfPointRecords) * 100);
+                    }
+                    yield return null;
+                }
+            }
+
+            Int64 realPos = GetRealPosition(octree.GetRoot().FindCoordinateOnOctree(pointsToWrite[0].LocalPosition));
+            //GET COORDINATE AND POSITION IN FILE
+            Int64 a = (realPos * (Int64)(sizeOfPoint * 250));
+
+            //WRITE IT
+            br_pos.Close();
+            fs.Close();
+            int numberOfPoints = pointsToWrite.Count;
+            Int64 c = a + (((numberOfPoints) * sizeOfPoint) + sizeof(int));
+
+            bw = new BinaryWriter(fs = File.OpenWrite((Application.streamingAssetsPath + "/" + fileName + "/" + fileName + "-2" + "/" + fileName + "-2" + ".bin")));
+            bw.BaseStream.Position = a;
+            bw.Write(numberOfPoints);
+            //WRITE POINT
+            foreach (PointData p in pointsToWrite) {
+                bw.Write((Double)p.coordinates.x);
+                bw.Write((Double)p.coordinates.y);
+                bw.Write((Double)p.coordinates.z);
+                bw.Write(p.classification);
+            }
+            bw.Close();
+            fs.Close();
+            if (numberOfPoints > 1000) {
+                print("Over 1000 in bin at " + numberOfPoints);
+                print("At level 2");
+                break;
+            }
+            pointsToWrite.Clear();
+            nodePosition += (4 - numberOfNodesRead);
+            numberOfNodesRead = 0;
+        }
 
 
         finishedCreatingBin = true;
@@ -497,7 +615,7 @@ public class GISData : GISDefinitions {
                 y = br.ReadInt32();
                 z = br.ReadInt32();
                 
-                p = CreatePointType();
+                p = CreatePointType(br);
                 p.coordinates = new Vector3((x * (float)header.xScaleFactor) + (float)header.xOffset, (y * (float)header.yScaleFactor) + (float)header.yOffset, (z * (float)header.zScaleFactor) + (float)header.zOffset);
                 p.LocalPosition = Normalize(origin, p.coordinates);
 
@@ -547,191 +665,9 @@ public class GISData : GISDefinitions {
         return new Vector3(point.x - origin.x, point.y - origin.y, point.z - origin.z);
     }
 
-    PointData CreatePointType() {
+    PointData CreatePointType(BinaryReader b) {
         PointData c = new PointData();
-        switch (header.versionMinor) {
-            //version 1.2
-            case 2:
-                //things that all the formats have
-                c.intensity = br.ReadUInt16(); //2
-                c.returnInformation = br.ReadByte(); //1
-                c.classification = br.ReadByte(); //1
-                c.scanAngleRank = br.ReadByte(); //1
-                c.userData = br.ReadByte(); //1
-                c.pointSourceID = br.ReadUInt16(); //2
-
-                //get the format
-                switch (header.pointDataRecordFormat) {
-                    case 0:
-                        return c;
-                    case 1:
-                        br.ReadBytes(8);
-                        //c.GPSTime = br.ReadDouble(); //8
-                        return c;
-                    case 2:
-                        c.red = br.ReadUInt16(); //2
-                        c.green = br.ReadUInt16(); //2
-                        c.blue = br.ReadUInt16(); //2
-                        return c;
-                    case 3:
-                        c.GPSTime = br.ReadDouble(); //8
-                        c.red = br.ReadUInt16(); //2
-                        c.green = br.ReadUInt16(); //2
-                        c.blue = br.ReadUInt16(); //2
-                        return c;
-                }
-                break;
-            case 3:
-                //things that all the formats have
-                c.intensity = br.ReadUInt16(); //2
-                c.returnInformation = br.ReadByte(); //1
-                c.classification = br.ReadByte(); //1
-                c.scanAngleRank = br.ReadByte(); //1
-                c.userData = br.ReadByte(); //1
-                c.pointSourceID = br.ReadUInt16(); //2
-                //get the format
-                switch (header.pointDataRecordFormat) {
-                    case 0:
-                        return c;
-                    case 1:
-                        c.GPSTime = br.ReadDouble(); //8
-                        return c;
-                    case 2:
-                        c.red = br.ReadUInt16(); //2
-                        c.green = br.ReadUInt16(); //2
-                        c.blue = br.ReadUInt16(); //2
-                        return c;
-                    case 3:
-                        c.GPSTime = br.ReadDouble(); //8
-                        c.red = br.ReadUInt16(); //2
-                        c.green = br.ReadUInt16(); //2
-                        c.blue = br.ReadUInt16(); //2
-                        return c;
-                    case 4:
-                        c.GPSTime = br.ReadDouble(); //8
-                        c.wavePacketDescriptorIndex = br.ReadByte(); //1
-                        c.byteOffsetToWaveformData = br.ReadUInt64(); //8
-                        c.waveformPacketSizeInBytes = br.ReadUInt32(); //4
-                        c.returnPointWaveformLocation = br.ReadSingle(); //4
-                        c.Xt = br.ReadSingle(); //4
-                        c.Yt = br.ReadSingle(); //4
-                        c.Zt = br.ReadSingle(); //4
-                        return c;
-                    case 5:
-                        c.GPSTime = br.ReadDouble(); //8
-                        c.red = br.ReadUInt16(); //2
-                        c.green = br.ReadUInt16(); //2
-                        c.blue = br.ReadUInt16(); //2
-                        c.wavePacketDescriptorIndex = br.ReadByte(); //1
-                        c.byteOffsetToWaveformData = br.ReadUInt64(); //8
-                        c.waveformPacketSizeInBytes = br.ReadUInt32(); //4
-                        c.returnPointWaveformLocation = br.ReadSingle(); //4
-                        c.Xt = br.ReadSingle(); //4
-                        c.Yt = br.ReadSingle(); //4
-                        c.Zt = br.ReadSingle(); //4
-                        return c;
-                }
-
-                break;
-
-            case 4:
-                //things that all the formats have
-                c.intensity = br.ReadUInt16(); //2
-                c.returnInformation = br.ReadByte(); //1
-                if(header.pointDataRecordFormat >= 6) {
-                    c.returnInformationExtended = br.ReadByte(); //1
-                }
-                c.classification = br.ReadByte(); //1
-                c.scanAngleRank = br.ReadByte(); //1
-                c.userData = br.ReadByte(); //1
-                c.pointSourceID = br.ReadUInt16(); //2
-                
-                //get the format
-                switch (header.pointDataRecordFormat) {
-                    case 0:
-                        return c;
-                    case 1:
-                        c.GPSTime = br.ReadDouble(); //8
-                        return c;
-                    case 2:
-                        c.red = br.ReadUInt16(); //2
-                        c.green = br.ReadUInt16(); //2
-                        c.blue = br.ReadUInt16(); //2
-                        return c;
-                    case 3:
-                        c.GPSTime = br.ReadDouble(); //8
-                        c.red = br.ReadUInt16(); //2
-                        c.green = br.ReadUInt16(); //2
-                        c.blue = br.ReadUInt16(); //2
-                        return c;
-                    case 4:
-                        c.GPSTime = br.ReadDouble(); //8
-                        c.wavePacketDescriptorIndex = br.ReadByte(); //1
-                        c.byteOffsetToWaveformData = br.ReadUInt64(); //8
-                        c.waveformPacketSizeInBytes = br.ReadUInt32(); //4
-                        c.returnPointWaveformLocation = br.ReadSingle(); //4
-                        c.Xt = br.ReadSingle(); //4
-                        c.Yt = br.ReadSingle(); //4
-                        c.Zt = br.ReadSingle(); //4
-                        return c;
-                    case 5:
-                        c.GPSTime = br.ReadDouble(); //8
-                        c.red = br.ReadUInt16(); //2
-                        c.green = br.ReadUInt16(); //2
-                        c.blue = br.ReadUInt16(); //2
-                        c.wavePacketDescriptorIndex = br.ReadByte(); //1
-                        c.byteOffsetToWaveformData = br.ReadUInt64(); //8
-                        c.waveformPacketSizeInBytes = br.ReadUInt32(); //4
-                        c.returnPointWaveformLocation = br.ReadSingle(); //4
-                        c.Xt = br.ReadSingle(); //4
-                        c.Yt = br.ReadSingle(); //4
-                        c.Zt = br.ReadSingle(); //4
-                        return c;
-                    case 6:
-                        c.GPSTime = br.ReadDouble(); //8
-                        return c;
-                    case 7:
-                        c.GPSTime = br.ReadDouble(); //8
-                        c.red = br.ReadUInt16(); //2
-                        c.green = br.ReadUInt16(); //2
-                        c.blue = br.ReadUInt16(); //2
-                        return c;
-                    case 8:
-                        c.GPSTime = br.ReadDouble(); //8
-                        c.red = br.ReadUInt16(); //2
-                        c.green = br.ReadUInt16(); //2
-                        c.blue = br.ReadUInt16(); //2
-                        c.NIR = br.ReadUInt16(); //2
-                        return c;
-                    case 9:
-                        c.GPSTime = br.ReadDouble(); //8
-                        c.wavePacketDescriptorIndex = br.ReadByte(); //1
-                        c.byteOffsetToWaveformData = br.ReadUInt64(); //8
-                        c.waveformPacketSizeInBytes = br.ReadUInt32(); //4
-                        c.returnPointWaveformLocation = br.ReadSingle(); //4
-                        c.Xt = br.ReadSingle(); //4
-                        c.Yt = br.ReadSingle(); //4
-                        c.Zt = br.ReadSingle(); //4
-                        return c;
-                    case 10:
-                        c.GPSTime = br.ReadDouble(); //8
-                        c.red = br.ReadUInt16(); //2
-                        c.green = br.ReadUInt16(); //2
-                        c.blue = br.ReadUInt16(); //2
-                        c.wavePacketDescriptorIndex = br.ReadByte(); //1
-                        c.byteOffsetToWaveformData = br.ReadUInt64(); //8
-                        c.waveformPacketSizeInBytes = br.ReadUInt32(); //4
-                        c.returnPointWaveformLocation = br.ReadSingle(); //4
-                        c.Xt = br.ReadSingle(); //4
-                        c.Yt = br.ReadSingle(); //4
-                        c.Zt = br.ReadSingle(); //4
-                        return c;
-                }
-                break;
-
-
-        }
-        print("Error in reading version! Confirm you are using 1.2, 1.3, or 1.4!");
+        c.classification = b.ReadByte();
         return new PointData();
     }
 
