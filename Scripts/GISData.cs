@@ -66,7 +66,9 @@ public class GISData : GISDefinitions {
         foreach (Vector3 v in positionsToDraw) {
             Octree.OctreeNode oc = octree.GetRoot().GetNodeAtCoordinate(v);
             Gizmos.DrawWireCube(oc.Position, new Vector3(octree.smallestTile, octree.smallestTile, octree.smallestTile));
+            
         }
+        Gizmos.DrawWireCube(origin, max - min);
     }
 
     void DrawPoints() {
@@ -152,8 +154,6 @@ public class GISData : GISDefinitions {
 
     void AddFOV() {
         //Vector3 cameraDirection = octree.GetRoot().GetNodeAtCoordinate(lastCoordinatePosition).Position + Camera.main.gameObject.transform.forward * octree.smallestTile * viewDistance;
-        
-
         int x = (int)lastCoordinatePosition.x + viewDistance;
         int y = (int)lastCoordinatePosition.y + viewDistance;
         int z = (int)lastCoordinatePosition.z + viewDistance;
@@ -161,8 +161,10 @@ public class GISData : GISDefinitions {
         while(z >= -((int)lastCoordinatePosition.z + viewDistance)) {
             while(y >= -((int)lastCoordinatePosition.y + viewDistance)) {
                 while(x >= -((int)lastCoordinatePosition.x + viewDistance)) {
-                    if(IsVisible(new Vector3(x, y, z)) && !positionsToDraw.Contains(new Vector3(x, y, z)) && (x >= 0 && y >=0 && z >= 0)) {
-                        positionsToDraw.Add(new Vector3(x, y, z));
+                    if (x >= 0 || y >= 0 || z <= 0) {
+                        if (IsVisible(octree.GetRoot().GetNodeAtCoordinate(new Vector3(x, y, z)).Position) && !positionsToDraw.Contains(new Vector3(x, y, z))) {
+                            positionsToDraw.Add(new Vector3(x, y, z));
+                        }
                     }
                     x--;
                 }
