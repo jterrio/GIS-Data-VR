@@ -67,6 +67,7 @@ public class GISDefinitions : MonoBehaviour {
 
     public int GetSizeOfPoint(int versionMajor, int versionMinor, int pointDataRecordFormat) {
         int toReturn = 0;
+        return 1 + (sizeof(double) * 3);
         switch (versionMinor) {
             //version 1.2
             case 2:
