@@ -117,6 +117,9 @@ public class GISData : GISDefinitions {
             Int64 realPos = GetRealPosition(position);
             GameObject p = Instantiate(holderObject);
             p.name = realPos.ToString();
+            if(realPos < 0) {
+                realPos = realPos;
+            }
             p.transform.position = octree.GetRoot().GetNodeAtCoordinate(position).Position;
             gameObjectPoints.Add(p);
 
@@ -161,7 +164,7 @@ public class GISData : GISDefinitions {
         while(z >= -((int)lastCoordinatePosition.z + viewDistance)) {
             while(y >= -((int)lastCoordinatePosition.y + viewDistance)) {
                 while(x >= -((int)lastCoordinatePosition.x + viewDistance)) {
-                    if (x >= 0 || y >= 0 || z <= 0) {
+                    if (x >= 0 && y >= 0 && z >= 0) {
                         if (IsVisible(octree.GetRoot().GetNodeAtCoordinate(new Vector3(x, y, z)).Position) && !positionsToDraw.Contains(new Vector3(x, y, z))) {
                             positionsToDraw.Add(new Vector3(x, y, z));
                         }
@@ -180,7 +183,7 @@ public class GISData : GISDefinitions {
     bool IsVisible(Vector3 point) {
         bool isVisible = false;
         Vector3 cameraPoint = Camera.main.WorldToViewportPoint(point);
-        if((cameraPoint.x >= 0 && cameraPoint.x <= 1) && (cameraPoint.y >= 0 && cameraPoint.y <= 1) && (cameraPoint.z > 0)) {
+        if((cameraPoint.x >= -0.2 && cameraPoint.x <= 1.2) && (cameraPoint.y >= -0.2 && cameraPoint.y <= 1.2) && (cameraPoint.z > -0.1)) {
             isVisible = true;
         }
         return isVisible;
