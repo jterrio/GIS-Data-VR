@@ -576,6 +576,20 @@ public class Octree {
             return returnNode;
         }
 
+        public OctreeNode GetNodeAtCoordinateDepth(Vector3 coordinate, int depth) {
+            OctreeNode returnNode = this;
+            List<int> path = GetPathToCoordinate(coordinate);
+            int d = 0;
+            while (!returnNode.IsLeaf() || d == depth) {
+                d++;
+                int i = path[0];
+                path.RemoveAt(0);
+                returnNode = returnNode.subNodes[i];
+            }
+
+            return returnNode;
+        }
+
         List<int> GetPathToCoordinate(Vector3 coordinate) {
             List<int> path = new List<int>();
 
