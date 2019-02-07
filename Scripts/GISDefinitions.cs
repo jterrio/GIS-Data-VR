@@ -66,7 +66,9 @@ public class GISDefinitions : MonoBehaviour {
     }
 
     public int GetSizeOfPoint(int versionMajor, int versionMinor, int pointDataRecordFormat) {
-        int toReturn = 0;
+        //t toReturn = 0;
+        return 1 + (sizeof(double) * 3);
+        /*
         switch (versionMinor) {
             //version 1.2
             case 2:
@@ -157,6 +159,7 @@ public class GISDefinitions : MonoBehaviour {
 
         }
         return toReturn + (sizeof(double) * 3);
+        */
     }
 
 
@@ -164,44 +167,7 @@ public class GISDefinitions : MonoBehaviour {
     [System.Serializable]
     public class PointData : Point {
 
-        //VERSION 1.2+
-        
-        public ushort intensity; //integer representation of the pulse return magnitude
-
-        public byte returnInformation; //includes returnNumber, numberOfReturns, scanDirectionFlag, and edgeOfFlightLine
-        public BitArray[] returnNumber = new BitArray[3];
-        public BitArray[] numberOfReturns = new BitArray[3];
-        public BitArray[] scanDirectionFlag = new BitArray[1];
-        public BitArray[] edgeOfFlightLine = new BitArray[1];
-
         public byte classification; //see classification class; defines the point
-        public byte scanAngleRank; //(-90 to +90) - Left Side
-        public byte userData; //optional user data
-        public ushort pointSourceID; //file from which point originated
-
-        public double GPSTime; //double floating point time tag value at which the point was acquired
-        public ushort red, green, blue; //used for "colorizing" a LIDAR point using ancillary data, typically from a camera
-
-        //VERSION 1.3+
-        public byte wavePacketDescriptorIndex; //indicates user defined record used to describe waveform packed associated with point (0 = no data; goes to 255)
-        public ulong byteOffsetToWaveformData; //location of the start of this LIDAR points' waveform packet (From beg of file: Start of Waveform Data Packet Record + Byte Offset to Waveform Packet Data)
-        public uint waveformPacketSizeInBytes; //size of eah waveform packet
-        public float returnPointWaveformLocation; //offset in picoseconds (10 ^ -12) from the first digitized value to the location within the waveform packet
-        //define parametic line equation for extrapolating points along associated waveform
-        public float Xt;
-        public float Yt;
-        public float Zt;
-
-
-        //VERSION 1.4+
-        public byte returnInformationExtended; //in 1.4, returnInformation contains only return number and number of returns (given pulse) and this will contain classification flags, scanner channel,  scan direction flag, and edge of flight line
-        public BitArray[] returnNumberExtended = new BitArray[4];
-        public BitArray[] numberOfReturnsExtended = new BitArray[4];
-        public BitArray[] classificationFlags = new BitArray[4];
-        public BitArray[] scanDirectionFlagExtended = new BitArray[2];
-        public BitArray[] edgeOfFlightLineExtended = new BitArray[2];
-
-        public ushort NIR; //near infrared channel value
 
 
 
