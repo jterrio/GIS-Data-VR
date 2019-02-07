@@ -470,8 +470,6 @@ public class GISData : GISDefinitions {
                 
 
                 Int64 a = (p.Key * (Int64)(sizeOfPoint * 1000));
-                print(p.Key);
-                print(a);
 
                 //READ HOW MANY POINTS
                 br_pos = new BinaryReader(fs = File.OpenRead((Application.streamingAssetsPath + "/" + fileName + "/" + fileName + "-0" + "/" + fileName + "-0" + ".bin")));
