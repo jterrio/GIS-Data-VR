@@ -36,6 +36,7 @@ public class GISData : GISDefinitions {
     public int viewDistance = 2;
     public bool readyToRender = false;
     public bool makeBin = false;
+    public float pointSize = 0.05f;
 
 
     private List<GameObject> gameObjectPoints = new List<GameObject>();
@@ -94,7 +95,7 @@ public class GISData : GISDefinitions {
     /// </summary>
     void DrawPoints() {
       
-
+        
 
         //return;
         Vector3 coordinate = octree.GetRoot().FindCoordinateOnOctree(player.transform.position);
@@ -190,7 +191,7 @@ public class GISData : GISDefinitions {
             m.SetIndices(indecies, MeshTopology.Points, 0);
             m.colors = colors;
             p.GetComponent<MeshFilter>().mesh = m;
-
+            p.GetComponent<MeshRenderer>().sharedMaterial.SetFloat("_PointSize", pointSize);
         }
 
         br_pos.Close();
