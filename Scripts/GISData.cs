@@ -654,9 +654,6 @@ public class GISData : GISDefinitions {
                 p.coordinates = new Vector3((x * (float)header.xScaleFactor) + (float)header.xOffset, (y * (float)header.yScaleFactor) + (float)header.yOffset, (z * (float)header.zScaleFactor) + (float)header.zOffset);
                 p.LocalPosition = Normalize(origin, p.coordinates);
 
-                if(i == 1) {
-                    print(p.LocalPosition.x + " " + p.LocalPosition.y + " " + p.LocalPosition.z);
-                }
 
 
                 octree.GetRoot().ExpandTree(p, octree.MaxPoints);
