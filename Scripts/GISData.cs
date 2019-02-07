@@ -41,10 +41,26 @@ public class GISData : GISDefinitions {
     private List<GameObject> gameObjectPoints = new List<GameObject>();
     private float percentage = 0f;
     private List<Vector3> positionsToDraw = new List<Vector3>();
-    
-   
-    
-    
+
+
+    private void OnDrawGizmos() {
+        //return;
+        foreach (Vector3 v in positionsToDraw) {
+            Octree.OctreeNode oc = octree.GetRoot().GetNodeAtCoordinate(v);
+            int distance = Distance(lastCoordinatePosition, v);
+            if (distance == 0) {
+                Gizmos.color = new Color(1, 0, 0, 1f);
+            } else if (distance == 1) {
+                Gizmos.color = new Color(0, 1, 0, 1f);
+            } else {
+                Gizmos.color = new Color(0, 0, 1, 1f);
+            }
+            Gizmos.DrawWireCube(oc.Position, new Vector3(octree.smallestTile, octree.smallestTile, octree.smallestTile));
+
+        }
+        //Gizmos.DrawWireCube(origin, max - min);
+    }
+
 
     // Use this for initialization
     void Start() {
@@ -109,6 +125,7 @@ public class GISData : GISDefinitions {
                 foreach (GameObject p in new List<GameObject>(gameObjectPoints)) {
                     if (other.name == p.name || p.name.ToCharArray()[0] == '-' && other != p) {
                         gameObjectPoints.Remove(p);
+                        Destroy(p);
                         needContinue = true;
                         break;
                     }
@@ -122,12 +139,12 @@ public class GISData : GISDefinitions {
             Int64 realPos = GetRealPosition(position);
             GameObject p = Instantiate(holderObject);
 
-            p.name = realPos.ToString() + "-" + distance.ToString();
+            p.name = realPos.ToString() + "-" + distance.ToString() + "-" + position.x + "-" + position.y + "-" + position.z;
             int pointsInBlock;
             p.transform.position = octree.GetRoot().GetNodeAtCoordinate(position).Position;
             if (distance == 0) {
                 pointsInBlock = pointsToWritePerBlock;
-            } else if(distance == 1) {
+            } else if(distance >= 1) {
                 pointsInBlock = Mathf.FloorToInt(pointsToWritePerBlock / 8);
             } else {
                 pointsInBlock = Mathf.FloorToInt(pointsToWritePerBlock / 64);
@@ -138,6 +155,8 @@ public class GISData : GISDefinitions {
 
             Int64 a = realPos * (Int64)(sizeOfPoint * pointsToWritePerBlock);
             if (a >= br_pos.BaseStream.Length || a < 0) {
+                gameObjectPoints.Remove(p);
+                Destroy(p);
                 continue;
             }
             br_pos.BaseStream.Position = a;
@@ -152,16 +171,24 @@ public class GISData : GISDefinitions {
             
             List<Vector3> pointsForMesh = new List<Vector3>();
             int[] indecies = new int[Mathf.Min(numberOfPoints, pointsInBlock)];
+            Color[] colors = new Color[Mathf.Min(numberOfPoints, pointsInBlock)];
 
-            totalPointsRendered += numberOfPoints;
+            totalPointsRendered += Mathf.Min(numberOfPoints, pointsInBlock);
             for (int i = 0; i < Mathf.Min(numberOfPoints, pointsInBlock); i++) {
+                double x = br_pos.ReadDouble();
+                double y = br_pos.ReadDouble();
+                double z = br_pos.ReadDouble();
+                byte b = br_pos.ReadByte();
+
                 br_pos.BaseStream.Position = (a + (((i) * sizeOfPoint)) + sizeof(int));
-                Vector3 realCoor = new Vector3((float)br_pos.ReadDouble(), (float)br_pos.ReadDouble(), (float)br_pos.ReadDouble());
+                Vector3 realCoor = new Vector3((float)x, (float)y, (float)z);
                 pointsForMesh.Add(Normalize(p.transform.position, Normalize(origin, realCoor)));
+                colors[i] = GetColorFromByte(b);
                 indecies[i] = i;
             }
             m.vertices = pointsForMesh.ToArray();
             m.SetIndices(indecies, MeshTopology.Points, 0);
+            m.colors = colors;
             p.GetComponent<MeshFilter>().mesh = m;
 
         }
@@ -182,7 +209,11 @@ public class GISData : GISDefinitions {
     /// <param name="away"></param>
     /// <returns>LoD number</returns>
     int Distance(Vector3 home, Vector3 away) {
-        int toReturn = (int)(Mathf.Max(Mathf.Abs(home.x - away.x), Mathf.Abs(home.y - away.z),Mathf.Abs(home.z - away.z))) - 1;   
+        int x = (int)Mathf.Abs(home.x - away.x);
+        int y = (int)Mathf.Abs(home.y - away.y);
+        int z = (int)Mathf.Abs(home.z - away.z);
+
+        int toReturn = (int)(Mathf.Max(x, y, z)) - 1;   
         if(toReturn <= 1) {
             return 0;
         }else if(toReturn <= 2) {
@@ -190,6 +221,62 @@ public class GISData : GISDefinitions {
         } else {
             return 2;
         }
+    }
+
+    /// <summary>
+    /// Gets colors from byte, representing the classification
+    /// </summary>
+    /// <param name="b"></param>
+    /// <returns></returns>
+    Color GetColorFromByte(Byte b) {
+        Color toReturn = new Color();
+        int c = Convert.ToInt32(b);
+        switch (c) {
+            case 0: //created, never classified
+                toReturn = Color.white;
+                break;
+            case 1: //unclassified
+                toReturn = Color.white;
+                break;
+            case 2: //ground
+                toReturn = new Color(165 / 255, 42 / 255, 42 / 255); //brown
+                break;
+            case 3: //low vegetation
+                toReturn = new Color(199 / 255, 234 / 255, 70 / 255); //lime
+                break;
+            case 4: //medium vegetation
+                toReturn = Color.green;
+                break;
+            case 5: //high vegetation
+                toReturn = new Color(11 / 255, 102 / 255, 35 / 255); //forest green
+                break;
+            case 6: //building
+                toReturn = Color.cyan;
+                break;
+            case 7: //low point (noise)
+                toReturn = Color.red;
+                break;
+            case 8: //model key-point (mass point)
+                toReturn = Color.yellow;
+                break;
+            case 9: //water
+                toReturn = Color.blue;
+                break;
+            case 10: //RESERVED
+                toReturn = new Color(255 / 255, 165 / 255, 0 / 255); //orange
+                break;
+            case 11: //RESERVED
+                toReturn = new Color(255 / 255, 165 / 255, 0 / 255); //orange
+                break;
+            case 12: //overlap points
+                toReturn = toReturn = new Color(255 / 255, 192 / 255, 203 / 255); //pink
+                break;
+            default: //RESERVED
+                toReturn = Color.white;
+                break;
+        }
+
+        return toReturn;
     }
 
     /// <summary>
@@ -351,8 +438,11 @@ public class GISData : GISDefinitions {
             float x = br.ReadInt32();
             float y = br.ReadInt32();
             float z = br.ReadInt32();
+            pd = new PointData();
+            br.ReadBytes(3);
+            pd.classification = br.ReadByte();
+
             numberOfPointsRead++;
-            pd = CreatePointType(br);
             pd.coordinates = new Vector3((x * (float)header.xScaleFactor) + (float)header.xOffset, (y * (float)header.yScaleFactor) + (float)header.yOffset, (z * (float)header.zScaleFactor) + (float)header.zOffset);
             pd.LocalPosition = Normalize(origin, pd.coordinates);
 

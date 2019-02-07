@@ -24,6 +24,8 @@ public enum OctreeIndex {
 public class Octree {
     private OctreeNode node; //root
     private int maxPointSize;
+
+    [Header("Tree Information")]
     public int currentMaxDepth = 1;
     public int currentLeaves = 1;
     public float smallestTile;
@@ -78,6 +80,11 @@ public class Octree {
             data = new List<GISDefinitions.PointData>();
         }
 
+        /// <summary>
+        /// Takes a point and runs it recursively through the octree and calculates the coordinate
+        /// </summary>
+        /// <param name="point"></param>
+        /// <returns></returns>
         public Vector3 FindCoordinateOnOctree(Vector3 point) {
             Vector3 returnVector = Vector3.zero;
             int depth = (int)Mathf.Pow(2, (tree.currentMaxDepth - 2));
@@ -215,6 +222,11 @@ public class Octree {
             }
         }
 
+        /// <summary>
+        /// Takes a point and recursively runs through tree and returns leaf that contains point
+        /// </summary>
+        /// <param name="point"></param>
+        /// <returns></returns>
         public OctreeNode FindLeafOnOctree(Vector3 point) {
             Vector3 returnVector = Vector3.zero;
             int depth = (int)Mathf.Pow(2, (tree.currentMaxDepth - 2));
@@ -419,7 +431,11 @@ public class Octree {
             }
         }
 
-
+        /// <summary>
+        /// Recursively runs through tree until at a leaf that contains point
+        /// </summary>
+        /// <param name="point"></param>
+        /// <returns></returns>
         public OctreeNode GetLeafFromExpandedTree(GISData.PointData point) {
             if (IsLeaf()) {
                 return this;
@@ -488,6 +504,11 @@ public class Octree {
             return false;
         }
 
+        /// <summary>
+        /// Gets which leaf a point belongs in given this equals some node
+        /// </summary>
+        /// <param name="lookupPosition"></param>
+        /// <returns></returns>
         private int GetIndexOfPosition(Vector3 lookupPosition) {
             int index = 0;
             if(lookupPosition.x > position.x) { //RIGHT
@@ -526,44 +547,11 @@ public class Octree {
             return index;
         }
 
-
-        private int GetIndexOfPositionDebug(Vector3 lookupPosition) {
-            int index = 0;
-            if (lookupPosition.x > position.x) { //RIGHT
-                if (lookupPosition.y > position.y) { //RIGHT-TOP
-                    if (lookupPosition.z > position.z) { //RIGHT-TOP-BACK
-                        index = 7;
-                    } else { //RIGHT-TOP-FRONT
-                        index = 6;
-                    }
-                } else { //RIGHT-BOTTOM
-                    if (lookupPosition.z > position.z) { //RIGHT-BOTTOM-BACK
-                        index = 3;
-                    } else { //RIGHT-BOTTOM-FRONT
-                        index = 2;
-                    }
-                }
-            } else { //LEFT
-                if (lookupPosition.y > position.y) { //LEFT-TOP
-
-                    if (lookupPosition.z > position.z) { //LEFT-TOP-BACK
-                        index = 5;
-                    } else { //LEFT-TOP-FRONT
-                        index = 4;
-                    }
-                } else { //LEFT-BOTTOM
-                    if (lookupPosition.z > position.z) { //LEFT-BOTTOM-BACK
-                        index = 1;
-                    } else { //LEFT-BOTTOM-FRONT
-                        index = 0;
-                    }
-
-                }
-
-            }
-            return index;
-        }
-
+        /// <summary>
+        /// Given a coordinate on the tree, it will return the node associated with it
+        /// </summary>
+        /// <param name="coordinate"></param>
+        /// <returns></returns>
         public OctreeNode GetNodeAtCoordinate(Vector3 coordinate) {
             OctreeNode returnNode = this;
             List<int> path = GetPathToCoordinate(coordinate);
@@ -576,6 +564,12 @@ public class Octree {
             return returnNode;
         }
 
+        /// <summary>
+        /// Given a coordinate on a tree and a depth, it will return the node associated with it at the given depth (return its parent)
+        /// </summary>
+        /// <param name="coordinate"></param>
+        /// <param name="depth"></param>
+        /// <returns></returns>
         public OctreeNode GetNodeAtCoordinateDepth(Vector3 coordinate, int depth) {
             OctreeNode returnNode = this;
             List<int> path = GetPathToCoordinate(coordinate);
