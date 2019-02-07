@@ -9,28 +9,42 @@ using System.Diagnostics;
 
 public class GISData : GISDefinitions {
 
+
+    [Header("File Setting")]
     public string fileName;
     public string fileType;
     protected string path;
     public int maxPoints; //max points to generate from file; leave at 0 for no max
+    [HideInInspector]
     public Header header;
+
+    [Header("Point Settings")] 
     public GameObject point;
     public int points;
     protected BinaryReader br;
+    public GameObject holderObject;
+
+    [Header("Octree Settings")]
     public Octree octree;
     private Vector3 min, max, origin;
+    public int pointsToWritePerBlock = 1000;
     private bool finishedCreatingBin = false;
+
+    [Header("User Settings")]
     public GameObject player;
-    private List<GameObject> gameObjectPoints = new List<GameObject>();
     public Vector3 lastCoordinatePosition;
-    public float percentage = 0f;
-    public bool makeBin = false;
-    public List<int> positionList = new List<int>();
-    public List<PointData> positionCount = new List<PointData>();
-    public List<Vector3> positionsToDraw = new List<Vector3>();
     public int viewDistance = 2;
-    public GameObject holderObject;
     public bool readyToRender = false;
+    public bool makeBin = false;
+
+
+    private List<GameObject> gameObjectPoints = new List<GameObject>();
+    private float percentage = 0f;
+    private List<Vector3> positionsToDraw = new List<Vector3>();
+    
+   
+    
+    
 
     // Use this for initialization
     void Start() {
@@ -51,35 +65,27 @@ public class GISData : GISDefinitions {
 
 
     void Update() {
-        if (!finishedCreatingBin) {
+        if (!finishedCreatingBin) { //wait until we finish generation
             return;
         }
-        if (readyToRender) {
+        if (readyToRender) { //only render when we want to/need
             DrawPoints();
         }
     }
 
-
-    private void OnDrawGizmos() {
-        //return;
-        Gizmos.color = new Color(1, 0, 0, 1f);
-        foreach (Vector3 v in positionsToDraw) {
-            Octree.OctreeNode oc = octree.GetRoot().GetNodeAtCoordinate(v);
-            Gizmos.DrawWireCube(oc.Position, new Vector3(octree.smallestTile, octree.smallestTile, octree.smallestTile));
-
-        }
-        //Gizmos.DrawWireCube(origin, max - min);
-    }
-
+    /// <summary>
+    /// Render all of the points
+    /// </summary>
     void DrawPoints() {
+      
+
+
+        //return;
         Vector3 coordinate = octree.GetRoot().FindCoordinateOnOctree(player.transform.position);
-        BinaryReader br_pos;
         FileStream fs;
         Stopwatch stopwatch = new Stopwatch();
         stopwatch.Start();
-        BinaryReader br_pos0 = new BinaryReader(fs = File.OpenRead((Application.streamingAssetsPath + "/" + fileName + "/" + fileName + "-0" + "/" + fileName + "-0" + ".bin")));
-        BinaryReader br_pos1 = new BinaryReader(fs = File.OpenRead((Application.streamingAssetsPath + "/" + fileName + "/" + fileName + "-1" + "/" + fileName + "-1" + ".bin")));
-        BinaryReader br_pos2 = new BinaryReader(fs = File.OpenRead((Application.streamingAssetsPath + "/" + fileName + "/" + fileName + "-2" + "/" + fileName + "-2" + ".bin")));
+        BinaryReader br_pos = new BinaryReader(fs = File.OpenRead((Application.streamingAssetsPath + "/" + fileName + "/" + fileName + "-0" + "/" + fileName + "-0" + ".bin")));
         int sizeOfPoint = GetSizeOfPoint(header.versionMajor, header.versionMinor, header.pointDataRecordFormat);
 
         positionsToDraw.Clear();
@@ -115,28 +121,22 @@ public class GISData : GISDefinitions {
             int distance = Distance(lastCoordinatePosition, position);
             Int64 realPos = GetRealPosition(position);
             GameObject p = Instantiate(holderObject);
+
             p.name = realPos.ToString() + "-" + distance.ToString();
             int pointsInBlock;
-            if(distance < 1) {
-                p.transform.position = octree.GetRoot().GetNodeAtCoordinate(position).Position;
-                br_pos = br_pos0;
-                pointsInBlock = 1000;
-            } else if(distance < 2) {
-                p.transform.position = octree.GetRoot().GetNodeAtCoordinateDepth(position, octree.currentMaxDepth - 2).Position;
-                br_pos = br_pos1;
-                realPos -= (realPos % 8);
-                pointsInBlock = 500;
+            p.transform.position = octree.GetRoot().GetNodeAtCoordinate(position).Position;
+            if (distance == 0) {
+                pointsInBlock = pointsToWritePerBlock;
+            } else if(distance == 1) {
+                pointsInBlock = Mathf.FloorToInt(pointsToWritePerBlock / 8);
             } else {
-                p.transform.position = octree.GetRoot().GetNodeAtCoordinateDepth(position, octree.currentMaxDepth - 3).Position;
-                br_pos = br_pos2;
-                realPos -= (realPos % 64);
-                pointsInBlock = 250;
+                pointsInBlock = Mathf.FloorToInt(pointsToWritePerBlock / 64);
             }
             gameObjectPoints.Add(p);
             p.SetActive(true);
 
 
-            Int64 a = realPos * (Int64)(sizeOfPoint * pointsInBlock);
+            Int64 a = realPos * (Int64)(sizeOfPoint * pointsToWritePerBlock);
             if (a >= br_pos.BaseStream.Length || a < 0) {
                 continue;
             }
@@ -148,20 +148,25 @@ public class GISData : GISDefinitions {
                 continue;
             }
 
+            Mesh m = new Mesh();
+            
+            List<Vector3> pointsForMesh = new List<Vector3>();
+            int[] indecies = new int[Mathf.Min(numberOfPoints, pointsInBlock)];
+
             totalPointsRendered += numberOfPoints;
-            for (int i = 0; i < numberOfPoints; i++) {
+            for (int i = 0; i < Mathf.Min(numberOfPoints, pointsInBlock); i++) {
                 br_pos.BaseStream.Position = (a + (((i) * sizeOfPoint)) + sizeof(int));
-                GameObject temp = Instantiate(point);
                 Vector3 realCoor = new Vector3((float)br_pos.ReadDouble(), (float)br_pos.ReadDouble(), (float)br_pos.ReadDouble());
-                temp.transform.position = Normalize(origin, realCoor);
-                temp.transform.parent = p.transform;
+                pointsForMesh.Add(Normalize(p.transform.position, Normalize(origin, realCoor)));
+                indecies[i] = i;
             }
+            m.vertices = pointsForMesh.ToArray();
+            m.SetIndices(indecies, MeshTopology.Points, 0);
+            p.GetComponent<MeshFilter>().mesh = m;
 
         }
 
-        br_pos0.Close();
-        br_pos1.Close();
-        br_pos2.Close();
+        br_pos.Close();
         fs.Close();
 
 
@@ -170,11 +175,26 @@ public class GISData : GISDefinitions {
         print("Time to render points (in milliseconds): " + stopwatch.ElapsedMilliseconds);
     }
 
-
+    /// <summary>
+    /// Calculates infinity distance and returns a number to be used based on that
+    /// </summary>
+    /// <param name="home"></param>
+    /// <param name="away"></param>
+    /// <returns>LoD number</returns>
     int Distance(Vector3 home, Vector3 away) {
-        return Mathf.Clamp(Mathf.FloorToInt(Vector3.Distance(home, away))- 1, 0, 2);
+        int toReturn = (int)(Mathf.Max(Mathf.Abs(home.x - away.x), Mathf.Abs(home.y - away.z),Mathf.Abs(home.z - away.z))) - 1;   
+        if(toReturn <= 1) {
+            return 0;
+        }else if(toReturn <= 2) {
+            return 1;
+        } else {
+            return 2;
+        }
     }
 
+    /// <summary>
+    /// Adds nodes that are visible and within range to be drawn
+    /// </summary>
     void AddFOV() {
         //Vector3 cameraDirection = octree.GetRoot().GetNodeAtCoordinate(lastCoordinatePosition).Position + Camera.main.gameObject.transform.forward * octree.smallestTile * viewDistance;
         int x = (int)lastCoordinatePosition.x + viewDistance;
@@ -200,16 +220,28 @@ public class GISData : GISDefinitions {
 
     }
 
+
+    /// <summary>
+    /// Checks if the node's center is within the camera's frustum +/- some distance
+    /// </summary>
+    /// <param name="point"></param>
+    /// <returns>True if visible</returns>
     bool IsVisible(Vector3 point) {
         bool isVisible = false;
         Vector3 cameraPoint = Camera.main.WorldToViewportPoint(point);
-        if ((cameraPoint.x >= 0 && cameraPoint.x <= 1) && (cameraPoint.y >= 0 && cameraPoint.y <= 1) && (cameraPoint.z > 0)) {
+        if ((cameraPoint.x >= -4 && cameraPoint.x <= 5) && (cameraPoint.y >= -4 && cameraPoint.y <= 5) && (cameraPoint.z >= -3)) {
             isVisible = true;
         }
         return isVisible;
     }
 
 
+
+    /// <summary>
+    /// Takes a Vector3 coordinate in the Octree and converts into a position via bit-interleaving
+    /// </summary>
+    /// <param name="coordinate"></param>
+    /// <returns>Position in file</returns>
     Int64 GetRealPosition(Vector3 coordinate) {
 
 
@@ -245,6 +277,9 @@ public class GISData : GISDefinitions {
     }
 
 
+    /// <summary>
+    /// Initializes the base of the Octree
+    /// </summary>
     void SetOctreeBase() {
         Vector3 min = new Vector3((float)header.xMin, (float)header.yMin, (float)header.zMin);
         Vector3 max = new Vector3((float)header.xMax, (float)header.yMax, (float)header.zMax);
@@ -257,6 +292,28 @@ public class GISData : GISDefinitions {
         print("Init Size: " + octree.SmallestTile);
     }
 
+
+    /// <summary>
+    /// Shuffles the list to randomize when points are written for LoD
+    /// </summary>
+    /// <param name="toShuffle"></param>
+    /// <returns>Shuffled List</returns>
+    List<PointData> ShuffleList(List<PointData> toShuffle) {
+        List<PointData> toReturn = new List<PointData>();
+        int count = toShuffle.Count;
+        for(int i = 0; i < count; i++) {
+            int randValue = UnityEngine.Random.Range(0, toShuffle.Count - 1);
+            toReturn.Add(toShuffle[randValue]);
+            toShuffle.RemoveAt(randValue);
+        }
+        return toReturn;
+    } 
+
+
+    /// <summary>
+    /// Writes the sorted/converted file
+    /// </summary>
+    /// <returns></returns>
     IEnumerator WriteToBin() {
         BinaryReader br_pos;
         BinaryWriter bw;
@@ -283,7 +340,9 @@ public class GISData : GISDefinitions {
         //yield return null;
 
         int numberOfPointsRead = 0;
-        List<PointData> pointsToWrite = new List<PointData>();
+
+        int totalSizeOfDic = 0;
+        Dictionary<Int64, List<PointData>> pointsToWrite = new Dictionary<Int64, List<PointData>>();
 
         //WRITE AND CREATE A FILE AT DEPTH = MAX
         while (numberOfPointsRead < (header.legacyNumberOfPointRecords)) { //(header.legacyNumberOfPointRecords - 1)
@@ -296,65 +355,44 @@ public class GISData : GISDefinitions {
             pd = CreatePointType(br);
             pd.coordinates = new Vector3((x * (float)header.xScaleFactor) + (float)header.xOffset, (y * (float)header.yScaleFactor) + (float)header.yOffset, (z * (float)header.zScaleFactor) + (float)header.zOffset);
             pd.LocalPosition = Normalize(origin, pd.coordinates);
-            pointsToWrite.Add(pd);
+
+            Int64 tempRealPos = GetRealPosition(octree.GetRoot().FindCoordinateOnOctree(pd.LocalPosition));
+            if (pointsToWrite.ContainsKey(tempRealPos)) {
+                pointsToWrite[tempRealPos].Add(pd);
+            } else {
+                List<PointData> pdTemp = new List<PointData>();
+                pdTemp.Add(pd);
+                pointsToWrite.Add(tempRealPos, pdTemp);
+            }
+            totalSizeOfDic++;
+
             if (numberOfPointsRead % 10000 == 0) {
-                if (maxPoints > 0 && maxPoints < header.legacyNumberOfPointRecords) {
-                    percentage = (((float)numberOfPointsRead / maxPoints) * 100);
-                } else {
-                    percentage = (((float)numberOfPointsRead / header.legacyNumberOfPointRecords) * 100);
-                    //print("PERCENTAGE: " + (((float)i / header.legacyNumberOfPointRecords) * 100));
-                }
+                percentage = (((float)numberOfPointsRead / maxPoints) * 100);
                 yield return null;
             }
-            if (pointsToWrite.Count < 1000) {
+            if (totalSizeOfDic < 1000) {
                 continue;
             }
 
             //GET COORDINATE AND POSITION IN FILE
-            foreach (PointData p in pointsToWrite) {
-                Vector3 coordinate = octree.GetRoot().FindCoordinateOnOctree(p.LocalPosition);
-                char[] xBits = Convert.ToString((int)coordinate.x, 2).ToCharArray();
-                char[] yBits = Convert.ToString((int)coordinate.y, 2).ToCharArray();
-                char[] zBits = Convert.ToString((int)coordinate.z, 2).ToCharArray();
-                char[] bitPos = new char[Mathf.Max(xBits.Length, yBits.Length, zBits.Length) * 3];
-                int currentPos = 0;
-                for (int b = 0; b < Mathf.Max(xBits.Length, yBits.Length, zBits.Length); b++) {
-                    if (b > xBits.Length - 1) {
-                        bitPos[currentPos] = '0';
-                    } else {
-                        bitPos[currentPos] = xBits[xBits.Length - (b + 1)];
-                    }
-                    currentPos += 1;
-                    if (b > yBits.Length - 1) {
-                        bitPos[currentPos] = '0';
-                    } else {
-                        bitPos[currentPos] = yBits[yBits.Length - (b + 1)];
-                    }
-                    currentPos += 1;
-                    if (b > zBits.Length - 1) {
-                        bitPos[currentPos] = '0';
-                    } else {
-                        bitPos[currentPos] = zBits[zBits.Length - (b + 1)];
-                    }
-                    currentPos += 1;
-                }
-                Array.Reverse(bitPos);
-                string actualPos = new string(bitPos);
-                int realPos = Convert.ToInt32(actualPos, 2);
-                //bw.BaseStream.Position = realPos * sizeOfBlock;
-                Int64 a = (realPos * (Int64)(sizeOfPoint * 1000));
+            foreach (var p in new Dictionary<Int64, List<PointData>>(pointsToWrite)) {
+                
 
-                //WRITE IT
+                Int64 a = (p.Key * (Int64)(sizeOfPoint * 1000));
+                print(p.Key);
+                print(a);
+
+                //READ HOW MANY POINTS
                 br_pos = new BinaryReader(fs = File.OpenRead((Application.streamingAssetsPath + "/" + fileName + "/" + fileName + "-0" + "/" + fileName + "-0" + ".bin")));
                 br_pos.BaseStream.Position = a;
 
                 if (a > br_pos.BaseStream.Length) {
                     print("Trying to get to: " + a);
-                    print("Realpos: " + realPos);
+                    print("Realpos: " + p.Key);
                     print("Length: " + br_pos.BaseStream.Length);
-                    print("Coordinate: " + coordinate);
                     print("On iteration: " + numberOfPointsRead);
                 }
+
                 int numberOfPoints = br_pos.ReadInt32();
                 br_pos.Close();
                 fs.Close();
@@ -364,132 +402,36 @@ public class GISData : GISDefinitions {
 
                 bw = new BinaryWriter(fs = File.OpenWrite((Application.streamingAssetsPath + "/" + fileName + "/" + fileName + "-0" + "/" + fileName + "-0" + ".bin")));
                 bw.BaseStream.Position = a;
-                bw.Write(numberOfPoints + 1);
-                //WRITE POINT
-
+                bw.Write(numberOfPoints + p.Value.Count);
                 bw.BaseStream.Position = c;
-                bw.Write((Double)p.coordinates.x);
-                bw.Write((Double)p.coordinates.y);
-                bw.Write((Double)p.coordinates.z);
+
+                //WRITE POINTS
+                List<PointData> sListOfPoints = ShuffleList(p.Value);
+                foreach (PointData value in sListOfPoints) {
+                    bw.Write((Double)value.coordinates.x);
+                    bw.Write((Double)value.coordinates.y);
+                    bw.Write((Double)value.coordinates.z);
+                    bw.Write(value.classification);
+                }
+                totalSizeOfDic -= p.Value.Count;
+                pointsToWrite.Remove(p.Key);
                 bw.Close();
                 fs.Close();
-
-
-
-
 
                 if (numberOfPoints > 1000) {
 
                     print("Over 1000 in bin at " + numberOfPoints);
-                    print("Coordinate at: " + coordinate);
+                    print("Coordinate at: " + p.Key);
                     yield return null;
-                    //break;
+                    break;
                 }
             }
-            pointsToWrite.Clear();
+            
         }
 
-        //WRITE AND CREATE A FILE AT DEPTH = MAX - 1
-        pointsToWrite.Clear();
-        int nodePosition = 0;
-        int numberOfNodesRead = 0;
-        folder = Directory.CreateDirectory(Application.streamingAssetsPath + "/" + fileName + "/" + fileName + "-1");
-        //CREATE FILE WITH SOME N LENGTH
-        bw = new BinaryWriter(fs = File.OpenWrite((Application.streamingAssetsPath + "/" + fileName + "/" + fileName + "-1" + "/" + fileName + "-1" + ".bin")));
-        bw.BaseStream.Position = (octree.currentLeaves * (Int64)(sizeOfPoint * 500));
-        bw.Write(0);
-        bw.Close();
-        fs.Close();
         
-        while (numberOfNodesRead < octree.currentLeaves) { //(header.legacyNumberOfPointRecords - 1)
-            br_pos = new BinaryReader(fs = File.OpenRead((Application.streamingAssetsPath + "/" + fileName + "/" + fileName + "-0" + "/" + fileName + "-0" + ".bin")));
-            br_pos.BaseStream.Position = numberOfNodesRead * (Int64)(sizeOfPoint * 1000);
-            int pointsInNode = br_pos.ReadInt32();
-            for (int n = 0; n < 8; n++) {
-                for (int i = 0; i < Mathf.Min(pointsInNode, 62); i++) {
-                    float x = br_pos.ReadInt32();
-                    float y = br_pos.ReadInt32();
-                    float z = br_pos.ReadInt32();
-                    pd = CreatePointType(br_pos);
-                    pd.coordinates = new Vector3((x * (float)header.xScaleFactor) + (float)header.xOffset, (y * (float)header.yScaleFactor) + (float)header.yOffset, (z * (float)header.zScaleFactor) + (float)header.zOffset);
-                    pd.LocalPosition = Normalize(origin, pd.coordinates);
-                    pointsToWrite.Add(pd);
-                }
-                numberOfNodesRead++;
-            }
-            if(pointsToWrite.Count > 500) {
-                print("PROBLEM!");
-            }
 
-            br_pos.Close();
-            fs.Close();
-            bw = new BinaryWriter(fs = File.OpenWrite((Application.streamingAssetsPath + "/" + fileName + "/" + fileName + "-0" + "/" + fileName + "-0" + ".bin")));
-            bw.BaseStream.Position = (numberOfNodesRead - 8) * (Int64)(sizeOfPoint * 500);
-            bw.Write(pointsToWrite.Count);
-            //GET COORDINATE AND POSITION IN FILE
-            foreach (PointData p in pointsToWrite) {
-                //WRITE POINT
-                bw.Write((Double)p.coordinates.x);
-                bw.Write((Double)p.coordinates.y);
-                bw.Write((Double)p.coordinates.z);
-                bw.Write((Double)p.classification);
-            }
-            bw.Close();
-            fs.Close();
-            pointsToWrite.Clear();
-        }
-
-
-        //WRITE AND CREATE A FILE AT DEPTH = MAX - 2
-        pointsToWrite.Clear();
-        nodePosition = 0;
-        numberOfNodesRead = 0;
-        folder = Directory.CreateDirectory(Application.streamingAssetsPath + "/" + fileName + "/" + fileName + "-2");
-        //CREATE FILE WITH SOME N LENGTH
-        bw = new BinaryWriter(fs = File.OpenWrite((Application.streamingAssetsPath + "/" + fileName + "/" + fileName + "-2" + "/" + fileName + "-2" + ".bin")));
-        bw.BaseStream.Position = (octree.currentLeaves * (Int64)(sizeOfPoint * 250));
-        bw.Write(0);
-        bw.Close();
-        fs.Close();
         
-        while (numberOfNodesRead < octree.currentLeaves) { //(header.legacyNumberOfPointRecords - 1)
-            br_pos = new BinaryReader(fs = File.OpenRead((Application.streamingAssetsPath + "/" + fileName + "/" + fileName + "-1" + "/" + fileName + "-1" + ".bin")));
-            br_pos.BaseStream.Position = numberOfNodesRead * (sizeOfPoint * 500);
-            int pointsInNode = br_pos.ReadInt32();
-            for (int n = 0; n < 8; n++) {
-                
-                for (int i = 0; i < Mathf.Min(pointsInNode, 31); i++) {
-                    float x = br_pos.ReadInt32();
-                    float y = br_pos.ReadInt32();
-                    float z = br_pos.ReadInt32();
-                    pd = CreatePointType(br_pos);
-                    pd.coordinates = new Vector3((x * (float)header.xScaleFactor) + (float)header.xOffset, (y * (float)header.yScaleFactor) + (float)header.yOffset, (z * (float)header.zScaleFactor) + (float)header.zOffset);
-                    pd.LocalPosition = Normalize(origin, pd.coordinates);
-                    pointsToWrite.Add(pd);
-                }
-                numberOfNodesRead++;
-            }
-            if (pointsToWrite.Count > 250) {
-                print("PROBLEM!");
-            }
-
-            br_pos.Close();
-            fs.Close();
-            bw = new BinaryWriter(fs = File.OpenWrite((Application.streamingAssetsPath + "/" + fileName + "/" + fileName + "-2" + "/" + fileName + "-2" + ".bin")));
-            bw.BaseStream.Position = (numberOfNodesRead - 4) * (Int64)(sizeOfPoint * 250);
-            bw.Write(pointsToWrite.Count);
-            //GET COORDINATE AND POSITION IN FILE
-            foreach (PointData p in pointsToWrite) {
-                //WRITE POINT
-                bw.Write((Double)p.coordinates.x);
-                bw.Write((Double)p.coordinates.y);
-                bw.Write((Double)p.coordinates.z);
-                bw.Write((Double)p.classification);
-            }
-            bw.Close();
-            fs.Close();
-            pointsToWrite.Clear();
-        }
 
 
         finishedCreatingBin = true;
@@ -498,6 +440,15 @@ public class GISData : GISDefinitions {
 
     }
 
+    /// <summary>
+    /// Validates if a point is on a tile
+    /// </summary>
+    /// <param name="minX"></param>
+    /// <param name="minY"></param>
+    /// <param name="minZ"></param>
+    /// <param name="max"></param>
+    /// <param name="point"></param>
+    /// <returns></returns>
     bool ValidateTilePoint(float minX, float minY, float minZ, float max, Vector3 point) {
         //print(minX + " " + minY + " " + minZ + ". Max is: " + max + ". Point is: " + point);
         if((point.x >= minX && point.x < (minX + max)) && (point.y >= minY && point.y <= (minY + max)) && (point.z >= minZ && point.z < (minZ + max))) {
@@ -507,7 +458,9 @@ public class GISData : GISDefinitions {
     }
 
 
-
+    /// <summary>
+    /// Reads the header of the given file
+    /// </summary>
     void ReadHeader() {
         print("Reading Header...");
         //how many - where we start
@@ -569,11 +522,20 @@ public class GISData : GISDefinitions {
         print("Done!");
     }
 
-
+    /// <summary>
+    /// Begins to read in points
+    /// </summary>
     public void BeginReadingPoints() {
         StartCoroutine("ReadPoints");
     }
 
+
+    /// <summary>
+    /// Read points and
+    /// 1) Expand Octree
+    /// 2) Make New File/Bin
+    /// </summary>
+    /// <returns></returns>
     public IEnumerator ReadPoints() {
         print("Creating Points...");
 
@@ -590,9 +552,7 @@ public class GISData : GISDefinitions {
         //create other points around origin
         while (octree.hasSplit) {
             octree.hasSplit = false;
-            //br.ReadBytes((int)header.offsetToPointData - (int)header.headerSize);
-            //br.BaseStream.Position = (int)header.offsetToPointData;
-            for (int i = 0; i < (header.legacyNumberOfPointRecords); i++) { //(header.legacyNumberOfPointRecords - 1)
+            for (int i = 0; i < (header.legacyNumberOfPointRecords); i++) { 
                 br.BaseStream.Position = (int)header.offsetToPointData + (i * header.pointDataRecordLength);
                 if (maxPoints != 0 && i > maxPoints - 1) {
                     break;
@@ -646,13 +606,25 @@ public class GISData : GISDefinitions {
         
     }
 
-
+    /// <summary>
+    /// Normalize a point around some origin
+    /// </summary>
+    /// <param name="origin"></param>
+    /// <param name="point"></param>
+    /// <returns></returns>
     Vector3 Normalize(Vector3 origin, Vector3 point) {
         return new Vector3(point.x - origin.x, point.y - origin.y, point.z - origin.z);
     }
 
+
+    /// <summary>
+    /// Create point by reading the given file from BinaryReader
+    /// </summary>
+    /// <param name="b"></param>
+    /// <returns></returns>
     PointData CreatePointType(BinaryReader b) {
         PointData c = new PointData();
+        b.ReadBytes(3);
         c.classification = b.ReadByte();
         return new PointData();
     }
