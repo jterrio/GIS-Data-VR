@@ -463,12 +463,14 @@ public class GISData : GISDefinitions {
             }
             totalSizeOfDic++;
 
-            if (numberOfPointsRead % 10000 == 0) {
+            if (numberOfPointsRead % 100000 == 0) {
                 percentage = (((float)numberOfPointsRead / maxPoints) * 100);
                 yield return null;
             }
-            if (totalSizeOfDic < 10000) {
-                continue;
+            if ((totalSizeOfDic < 100000)) {
+                if (((numberOfPointsRead < (header.legacyNumberOfPointRecords)))){
+                    continue;
+                }
             }
 
             //GET COORDINATE AND POSITION IN FILE
