@@ -37,6 +37,7 @@ public class GISData : GISDefinitions {
     public bool readyToRender = false;
     public bool makeBin = false;
     public float pointSize = 0.05f;
+    public bool renderGizmos = true;
 
 
     private List<GameObject> gameObjectPoints = new List<GameObject>();
@@ -45,7 +46,9 @@ public class GISData : GISDefinitions {
 
 
     private void OnDrawGizmos() {
-        //return;
+        if (!renderGizmos) {
+            return;
+        }
         foreach (Vector3 v in positionsToDraw) {
             Octree.OctreeNode oc = octree.GetRoot().GetNodeAtCoordinate(v);
             int distance = Distance(lastCoordinatePosition, v);
@@ -118,6 +121,7 @@ public class GISData : GISDefinitions {
         gameObjectPoints.Clear();
 
         int totalPointsRendered = 0;
+        int totalPointsInBin = 0;
 
         bool needContinue = true;
         while (needContinue) {
@@ -175,6 +179,7 @@ public class GISData : GISDefinitions {
             Color[] colors = new Color[Mathf.Min(numberOfPoints, pointsInBlock)];
 
             totalPointsRendered += Mathf.Min(numberOfPoints, pointsInBlock);
+            totalPointsInBin += numberOfPoints;
             for (int i = 0; i < Mathf.Min(numberOfPoints, pointsInBlock); i++) {
                 double x = br_pos.ReadDouble();
                 double y = br_pos.ReadDouble();
@@ -200,6 +205,7 @@ public class GISData : GISDefinitions {
 
         stopwatch.Stop();
         print("Total points rendered: " + totalPointsRendered);
+        print("Total points in bin(s): " + totalPointsInBin);
         print("Time to render points (in milliseconds): " + stopwatch.ElapsedMilliseconds);
     }
 
@@ -215,9 +221,9 @@ public class GISData : GISDefinitions {
         int z = (int)Mathf.Abs(home.z - away.z);
 
         int toReturn = (int)(Mathf.Max(x, y, z)) - 1;   
-        if(toReturn <= 1) {
+        if(toReturn <= 3) {
             return 0;
-        }else if(toReturn <= 2) {
+        }else if(toReturn <= 4) {
             return 1;
         } else {
             return 2;
@@ -240,16 +246,16 @@ public class GISData : GISDefinitions {
                 toReturn = Color.white;
                 break;
             case 2: //ground
-                toReturn = new Color(165 / 255, 42 / 255, 42 / 255); //brown
+                toReturn = new Color(0.396f, 0.263f, 0.129f); //brown
                 break;
             case 3: //low vegetation
-                toReturn = new Color(199 / 255, 234 / 255, 70 / 255); //lime
+                toReturn = new Color(0.78f, 0.918f, 0.275f); //lime
                 break;
             case 4: //medium vegetation
                 toReturn = Color.green;
                 break;
             case 5: //high vegetation
-                toReturn = new Color(11 / 255, 102 / 255, 35 / 255); //forest green
+                toReturn = new Color(0.043f, 0.4f, 0.137f); //forest green
                 break;
             case 6: //building
                 toReturn = Color.cyan;
@@ -264,13 +270,13 @@ public class GISData : GISDefinitions {
                 toReturn = Color.blue;
                 break;
             case 10: //RESERVED
-                toReturn = new Color(255 / 255, 165 / 255, 0 / 255); //orange
+                toReturn = new Color(1, 0.647f, 0); //orange
                 break;
             case 11: //RESERVED
-                toReturn = new Color(255 / 255, 165 / 255, 0 / 255); //orange
+                toReturn = new Color(1, 0.647f, 0); //orange
                 break;
             case 12: //overlap points
-                toReturn = toReturn = new Color(255 / 255, 192 / 255, 203 / 255); //pink
+                toReturn = toReturn = new Color(1, 0.753f, 0.796f); //pink
                 break;
             default: //RESERVED
                 toReturn = Color.white;
@@ -461,7 +467,7 @@ public class GISData : GISDefinitions {
                 percentage = (((float)numberOfPointsRead / maxPoints) * 100);
                 yield return null;
             }
-            if (totalSizeOfDic < 1000) {
+            if (totalSizeOfDic < 10000) {
                 continue;
             }
 
