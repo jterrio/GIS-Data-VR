@@ -508,7 +508,7 @@ public class GISData : GISDefinitions {
                     bw.Write((Double)value.coordinates.z);
                     bw.Write(value.classification);
                 }
-                totalSizeOfDic -= p.Value.Count;
+                totalSizeOfDic -= sListOfPoints.Count;
                 pointsToWrite.Remove(p.Key);
                 bw.Close();
                 fs.Close();
