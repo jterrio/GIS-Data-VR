@@ -17,6 +17,9 @@ public class GISData : GISDefinitions {
     public int maxPoints; //max points to generate from file; leave at 0 for no max
     [HideInInspector]
     public Header header;
+    public bool useCustomMaxAndMin = false;
+    public Vector3 customMin;
+    public Vector3 customMax;
 
     [Header("Point Settings")] 
     public GameObject point;
@@ -38,6 +41,7 @@ public class GISData : GISDefinitions {
     public bool makeBin = false;
     public float pointSize = 0.05f;
     public bool renderGizmos = true;
+
 
 
     private List<GameObject> gameObjectPoints = new List<GameObject>();
@@ -375,13 +379,17 @@ public class GISData : GISDefinitions {
     /// Initializes the base of the Octree
     /// </summary>
     void SetOctreeBase() {
-        Vector3 min = new Vector3((float)header.xMin, (float)header.yMin, (float)header.zMin);
-        Vector3 max = new Vector3((float)header.xMax, (float)header.yMax, (float)header.zMax);
-        Vector3 origin = new Vector3((max.x + min.x) / 2, (max.y + min.y) / 2, (max.z + min.z) / 2);
-        Vector3 normalMin = Normalize(origin, min);
-        Vector3 normalMax = Normalize(origin, max);
+        Vector3 oMin = customMin;
+        Vector3 oMax = customMax;
+        if (!useCustomMaxAndMin) {
+            oMin = new Vector3((float)header.xMin, (float)header.zMin, (float)header.yMin);
+            oMax = new Vector3((float)header.xMax, (float)header.zMax, (float)header.yMax);
+        }
+        Vector3 origin = new Vector3((oMax.x + oMin.x) / 2, (oMax.y + oMin.y) / 2, (oMax.z + oMin.z) / 2);
+        Vector3 normalMin = Normalize(origin, oMin);
+        Vector3 normalMax = Normalize(origin, oMax);
         float[] ranges = new float[] { (float)(normalMax.x - normalMin.x), (float)(normalMax.y - normalMin.y), (float)(normalMax.z - normalMin.z) };
-        octree = new Octree(Vector3.zero, Mathf.Max(ranges), 1000);
+        octree = new Octree(Vector3.zero, Mathf.Max(ranges), pointsToWritePerBlock);
         //player.transform.position = normalMax - normalMin;
         print("Init Size: " + octree.SmallestTile);
     }
@@ -427,7 +435,7 @@ public class GISData : GISDefinitions {
 
         //CREATE FILE WITH SOME N LENGTH
         bw = new BinaryWriter(fs = File.OpenWrite((Application.streamingAssetsPath + "/" + fileName + "/" + fileName + "-0" + "/" + fileName + "-0" + ".bin")));
-        bw.BaseStream.Position = (octree.currentLeaves * (Int64)(sizeOfPoint * 1000));
+        bw.BaseStream.Position = (octree.currentLeaves * (Int64)(sizeOfPoint * pointsToWritePerBlock));
         bw.Write(0);
         bw.Close();
         fs.Close();
@@ -450,7 +458,7 @@ public class GISData : GISDefinitions {
             pd.classification = br.ReadByte();
 
             numberOfPointsRead++;
-            pd.coordinates = new Vector3((x * (float)header.xScaleFactor) + (float)header.xOffset, (y * (float)header.yScaleFactor) + (float)header.yOffset, (z * (float)header.zScaleFactor) + (float)header.zOffset);
+            pd.coordinates = new Vector3((x * (float)header.xScaleFactor) + (float)header.xOffset, (z * (float)header.zScaleFactor) + (float)header.zOffset, (y * (float)header.yScaleFactor) + (float)header.yOffset);
             pd.LocalPosition = Normalize(origin, pd.coordinates);
 
             Int64 tempRealPos = GetRealPosition(octree.GetRoot().FindCoordinateOnOctree(pd.LocalPosition));
@@ -477,7 +485,7 @@ public class GISData : GISDefinitions {
             foreach (var p in new Dictionary<Int64, List<PointData>>(pointsToWrite)) {
                 
 
-                Int64 a = (p.Key * (Int64)(sizeOfPoint * 1000));
+                Int64 a = (p.Key * (Int64)(sizeOfPoint * pointsToWritePerBlock));
 
                 //READ HOW MANY POINTS
                 br_pos = new BinaryReader(fs = File.OpenRead((Application.streamingAssetsPath + "/" + fileName + "/" + fileName + "-0" + "/" + fileName + "-0" + ".bin")));
@@ -515,9 +523,9 @@ public class GISData : GISDefinitions {
                 bw.Close();
                 fs.Close();
 
-                if (numberOfPoints > 1000) {
+                if (numberOfPoints > pointsToWritePerBlock) {
 
-                    print("Over 1000 in bin at " + numberOfPoints);
+                    print("Over in bin at " + numberOfPoints);
                     print("Coordinate at: " + p.Key);
                     yield return null;
                     break;
@@ -639,8 +647,13 @@ public class GISData : GISDefinitions {
         //xyz
         float x, y, z;
         //create origin for normalization
-        min = new Vector3((float)header.xMin, (float)header.yMin, (float)header.zMin);
-        max = new Vector3((float)header.xMax, (float)header.yMax, (float)header.zMax);
+        if (useCustomMaxAndMin) {
+            min = customMin;
+            max = customMax;
+        } else {
+            min = new Vector3((float)header.xMin, (float)header.zMin, (float)header.yMin);
+            max = new Vector3((float)header.xMax, (float)header.zMax, (float)header.yMax);
+        }
         origin = new Vector3((max.x + min.x) / 2, (max.y + min.y) / 2, (max.z + min.z) / 2);
 
         PointData p;
@@ -659,7 +672,7 @@ public class GISData : GISDefinitions {
                 z = br.ReadInt32();
                 
                 p = CreatePointType(br);
-                p.coordinates = new Vector3((x * (float)header.xScaleFactor) + (float)header.xOffset, (y * (float)header.yScaleFactor) + (float)header.yOffset, (z * (float)header.zScaleFactor) + (float)header.zOffset);
+                p.coordinates = new Vector3((x * (float)header.xScaleFactor) + (float)header.xOffset, (z * (float)header.zScaleFactor) + (float)header.zOffset, (y * (float)header.yScaleFactor) + (float)header.yOffset);
                 p.LocalPosition = Normalize(origin, p.coordinates);
 
 
