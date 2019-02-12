@@ -736,7 +736,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: bd523563db8d75444ae3b15d68f81472, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  fileName: 249000_1903000
+  fileName: 253000_1922000
   fileType: las
   maxPoints: 0
   header:
@@ -777,6 +777,9 @@ MonoBehaviour:
     numberOfExtendedVariableLengthRecords: 0
     numberOfPointRecords: 0
     numberOfPointsByReturn: 
+  useCustomMaxAndMin: 0
+  customMin: {x: 0, y: 0, z: 0}
+  customMax: {x: 0, y: 0, z: 0}
   point: {fileID: 1308686475757576, guid: ac8388e0e69ab6d46acee73370f12b8e, type: 3}
   points: 0
   holderObject: {fileID: 2186573086238210433, guid: e7ae2b605ba5e5347b7b47de1719c102,
@@ -789,7 +792,7 @@ MonoBehaviour:
   pointsToWritePerBlock: 10000
   player: {fileID: 880019966}
   lastCoordinatePosition: {x: 0, y: 0, z: 0}
-  viewDistance: 5
+  viewDistance: 4
   readyToRender: 1
   makeBin: 0
   pointSize: 0.05

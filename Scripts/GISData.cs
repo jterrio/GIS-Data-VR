@@ -15,7 +15,7 @@ public class GISData : GISDefinitions {
     public string fileType;
     protected string path;
     public int maxPoints; //max points to generate from file; leave at 0 for no max
-    [HideInInspector]
+    
     public Header header;
     public bool useCustomMaxAndMin = false;
     public Vector3 customMin;
@@ -42,20 +42,21 @@ public class GISData : GISDefinitions {
     public float pointSize = 0.05f;
     public bool renderGizmos = true;
 
-
-
+    private float fps;
+    private float timeToCompleteFrame;
     private List<GameObject> gameObjectPoints = new List<GameObject>();
     private float percentage = 0f;
     private List<Vector3> positionsToDraw = new List<Vector3>();
-
+    private Vector3 debugPoint;
 
     private void OnDrawGizmos() {
         if (!renderGizmos) {
             return;
         }
-        foreach (Vector3 v in positionsToDraw) {
-            Octree.OctreeNode oc = octree.GetRoot().GetNodeAtCoordinate(v);
-            int distance = Distance(lastCoordinatePosition, v);
+        foreach (GameObject g in gameObjectPoints) {
+            Vector3 coordinate = octree.GetRoot().FindCoordinateOnOctree(g.transform.position);
+            Octree.OctreeNode oc = octree.GetRoot().GetNodeAtCoordinate(coordinate);
+            int distance = Distance(lastCoordinatePosition, coordinate);
             if (distance == 0) {
                 Gizmos.color = new Color(1, 0, 0, 1f);
             } else if (distance == 1) {
@@ -109,7 +110,6 @@ public class GISData : GISDefinitions {
         FileStream fs;
         Stopwatch stopwatch = new Stopwatch();
         stopwatch.Start();
-        BinaryReader br_pos = new BinaryReader(fs = File.OpenRead((Application.streamingAssetsPath + "/" + fileName + "/" + fileName + "-0" + "/" + fileName + "-0" + ".bin")));
         int sizeOfPoint = GetSizeOfPoint(header.versionMajor, header.versionMinor, header.pointDataRecordFormat);
 
         positionsToDraw.Clear();
@@ -118,15 +118,10 @@ public class GISData : GISDefinitions {
 
         AddFOV();
 
-
-        foreach (GameObject p in gameObjectPoints) {
-            Destroy(p);
-        }
-        gameObjectPoints.Clear();
-
         int totalPointsRendered = 0;
         int totalPointsInBin = 0;
 
+        /*
         bool needContinue = true;
         while (needContinue) {
             needContinue = false;
@@ -140,77 +135,110 @@ public class GISData : GISDefinitions {
                     }
                 }
             }
+        }*/
+
+
+        //Remove duplicates from those that are already drawn
+        foreach(Vector3 position in new List<Vector3>(positionsToDraw)) {
+            String positionComp = GetRealPosition(position).ToString() + "-" + Distance(lastCoordinatePosition, position).ToString() + "-" + position.x + "-" + position.y + "-" + position.z;
+            foreach(GameObject g in gameObjectPoints) {
+                if(g.name == positionComp) {
+                    positionsToDraw.Remove(position);
+                }
+            }
+        }
+
+        //Remove objects in scene which cannot be viewed
+        foreach(GameObject g in new List<GameObject>(gameObjectPoints)) {
+            if (!IsVisible(g.transform.position) && lastCoordinatePosition != octree.GetRoot().FindCoordinateOnOctree(g.transform.position)) {
+                gameObjectPoints.Remove(g);
+                Destroy(g);
+            }
         }
 
         foreach (Vector3 position in new List<Vector3>(positionsToDraw)) {
-
-            int distance = Distance(lastCoordinatePosition, position);
-            Int64 realPos = GetRealPosition(position);
-            GameObject p = Instantiate(holderObject);
-
-            p.name = realPos.ToString() + "-" + distance.ToString() + "-" + position.x + "-" + position.y + "-" + position.z;
-            int pointsInBlock;
-            p.transform.position = octree.GetRoot().GetNodeAtCoordinate(position).Position;
-            if (distance == 0) {
-                pointsInBlock = pointsToWritePerBlock;
-            } else if(distance >= 1) {
-                pointsInBlock = Mathf.FloorToInt(pointsToWritePerBlock / 8);
-            } else {
-                pointsInBlock = Mathf.FloorToInt(pointsToWritePerBlock / 64);
-            }
-            gameObjectPoints.Add(p);
-            p.SetActive(true);
-
-
-            Int64 a = realPos * (Int64)(sizeOfPoint * pointsToWritePerBlock);
-            if (a >= br_pos.BaseStream.Length || a < 0) {
-                gameObjectPoints.Remove(p);
-                Destroy(p);
-                continue;
-            }
-            br_pos.BaseStream.Position = a;
-            int numberOfPoints = br_pos.ReadInt32();
-            if (numberOfPoints <= 0) {
-                gameObjectPoints.Remove(p);
-                Destroy(p);
-                continue;
-            }
-
-            Mesh m = new Mesh();
-            
-            List<Vector3> pointsForMesh = new List<Vector3>();
-            int[] indecies = new int[Mathf.Min(numberOfPoints, pointsInBlock)];
-            Color[] colors = new Color[Mathf.Min(numberOfPoints, pointsInBlock)];
-
-            totalPointsRendered += Mathf.Min(numberOfPoints, pointsInBlock);
-            totalPointsInBin += numberOfPoints;
-            for (int i = 0; i < Mathf.Min(numberOfPoints, pointsInBlock); i++) {
-                double x = br_pos.ReadDouble();
-                double y = br_pos.ReadDouble();
-                double z = br_pos.ReadDouble();
-                byte b = br_pos.ReadByte();
-
-                br_pos.BaseStream.Position = (a + (((i) * sizeOfPoint)) + sizeof(int));
-                Vector3 realCoor = new Vector3((float)x, (float)y, (float)z);
-                pointsForMesh.Add(Normalize(p.transform.position, Normalize(origin, realCoor)));
-                colors[i] = GetColorFromByte(b);
-                indecies[i] = i;
-            }
-            m.vertices = pointsForMesh.ToArray();
-            m.SetIndices(indecies, MeshTopology.Points, 0);
-            m.colors = colors;
-            p.GetComponent<MeshFilter>().mesh = m;
-            p.GetComponent<MeshRenderer>().sharedMaterial.SetFloat("_PointSize", pointSize);
+            totalPointsRendered += RenderVector(position, sizeOfPoint);
         }
-
-        br_pos.Close();
-        fs.Close();
 
 
         stopwatch.Stop();
-        print("Total points rendered: " + totalPointsRendered);
-        print("Total points in bin(s): " + totalPointsInBin);
-        print("Time to render points (in milliseconds): " + stopwatch.ElapsedMilliseconds);
+        //print("Total points rendered: " + totalPointsRendered);
+        //print("Total points in bin(s): " + totalPointsInBin);
+        //print("Time to render points (in milliseconds): " + stopwatch.ElapsedMilliseconds);
+
+        timeToCompleteFrame = stopwatch.ElapsedMilliseconds;
+        fps = 1 / Time.deltaTime;
+    }
+
+
+    int RenderVector(Vector3 position, int sizeOfPoint) {
+        FileStream fs;
+        BinaryReader br_pos = new BinaryReader(fs = File.OpenRead((Application.streamingAssetsPath + "/" + fileName + "/" + fileName + "-0" + "/" + fileName + "-0" + ".bin")));
+        int pointsInBlock;
+        int distance = Distance(lastCoordinatePosition, position);
+        Int64 realPos = GetRealPosition(position);
+
+        Vector3 objectPos = octree.GetRoot().GetNodeAtCoordinate(position).Position;
+
+        if (distance == 0) {
+            pointsInBlock = pointsToWritePerBlock;
+        } else if (distance >= 1) {
+            pointsInBlock = Mathf.FloorToInt(pointsToWritePerBlock / 8);
+        } else {
+            pointsInBlock = Mathf.FloorToInt(pointsToWritePerBlock / 64);
+        }
+
+
+        GameObject p = Instantiate(holderObject);
+
+        p.name = realPos.ToString() + "-" + distance.ToString() + "-" + position.x + "-" + position.y + "-" + position.z;
+
+        Int64 a = realPos * (Int64)(sizeOfPoint * pointsToWritePerBlock);
+        if (a >= br_pos.BaseStream.Length || a < 0) {
+            gameObjectPoints.Remove(p);
+            Destroy(p);
+            return 0;
+        }
+
+        p.transform.position = objectPos;
+        gameObjectPoints.Add(p);
+        p.SetActive(true);
+
+        br_pos.BaseStream.Position = a;
+        int numberOfPoints = br_pos.ReadInt32();
+        if (numberOfPoints <= 0) {
+            gameObjectPoints.Remove(p);
+            Destroy(p);
+            return 0;
+        }
+
+        Mesh m = new Mesh();
+
+        List<Vector3> pointsForMesh = new List<Vector3>();
+        int[] indecies = new int[Mathf.Min(numberOfPoints, pointsInBlock)];
+        Color[] colors = new Color[Mathf.Min(numberOfPoints, pointsInBlock)];
+
+
+        for (int i = 0; i < Mathf.Min(numberOfPoints, pointsInBlock); i++) {
+            double x = br_pos.ReadDouble();
+            double y = br_pos.ReadDouble();
+            double z = br_pos.ReadDouble();
+            byte b = br_pos.ReadByte();
+
+            br_pos.BaseStream.Position = (a + (((i) * sizeOfPoint)) + sizeof(int));
+            Vector3 realCoor = new Vector3((float)x, (float)y, (float)z);
+            pointsForMesh.Add(Normalize(p.transform.position, Normalize(origin, realCoor)));
+            colors[i] = GetColorFromByte(b);
+            indecies[i] = i;
+        }
+        m.vertices = pointsForMesh.ToArray();
+        m.SetIndices(indecies, MeshTopology.Points, 0);
+        m.colors = colors;
+        p.GetComponent<MeshFilter>().mesh = m;
+        p.GetComponent<MeshRenderer>().sharedMaterial.SetFloat("_PointSize", pointSize);
+        br_pos.Close();
+        fs.Close();
+        return Mathf.Min(numberOfPoints, pointsInBlock);
     }
 
     /// <summary>
@@ -225,9 +253,9 @@ public class GISData : GISDefinitions {
         int z = (int)Mathf.Abs(home.z - away.z);
 
         int toReturn = (int)(Mathf.Max(x, y, z)) - 1;   
-        if(toReturn <= 3) {
+        if(toReturn <= viewDistance / 4) {
             return 0;
-        }else if(toReturn <= 4) {
+        }else if(toReturn <= viewDistance / 2) {
             return 1;
         } else {
             return 2;
@@ -674,7 +702,9 @@ public class GISData : GISDefinitions {
                 p = CreatePointType(br);
                 p.coordinates = new Vector3((x * (float)header.xScaleFactor) + (float)header.xOffset, (z * (float)header.zScaleFactor) + (float)header.zOffset, (y * (float)header.yScaleFactor) + (float)header.yOffset);
                 p.LocalPosition = Normalize(origin, p.coordinates);
-
+                if(i == 0) {
+                    debugPoint = p.LocalPosition;
+                }
 
 
                 octree.GetRoot().ExpandTree(p, octree.MaxPoints);
