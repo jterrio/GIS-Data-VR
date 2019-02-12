@@ -17,7 +17,7 @@ public class GISData : GISDefinitions {
     public int maxPoints; //max points to generate from file; leave at 0 for no max
     
     public Header header;
-    public bool useCustomMaxAndMin = false;
+    public bool useGlobalValues = false;
     public Vector3 customMin;
     public Vector3 customMax;
 
@@ -48,6 +48,8 @@ public class GISData : GISDefinitions {
     private float percentage = 0f;
     private List<Vector3> positionsToDraw = new List<Vector3>();
     private Vector3 debugPoint;
+    private Vector3 globalOrigin;
+    private Vector3 globalOffset;
 
     private void OnDrawGizmos() {
         if (!renderGizmos) {
@@ -81,7 +83,6 @@ public class GISData : GISDefinitions {
         header.generatingSoftware = new char[32];
         header.legacyNumberOfPointsByReturn = new uint[5];
         header.numberOfPointsByReturn = new ulong[15];
-
         br = new BinaryReader(File.Open(path, FileMode.Open));
 
         ReadHeader();
@@ -170,7 +171,6 @@ public class GISData : GISDefinitions {
         fps = 1 / Time.deltaTime;
     }
 
-
     int RenderVector(Vector3 position, int sizeOfPoint) {
         FileStream fs;
         BinaryReader br_pos = new BinaryReader(fs = File.OpenRead((Application.streamingAssetsPath + "/" + fileName + "/" + fileName + "-0" + "/" + fileName + "-0" + ".bin")));
@@ -179,6 +179,9 @@ public class GISData : GISDefinitions {
         Int64 realPos = GetRealPosition(position);
 
         Vector3 objectPos = octree.GetRoot().GetNodeAtCoordinate(position).Position;
+        if (useGlobalValues) {
+            objectPos += globalOffset;
+        }
 
         if (distance == 0) {
             pointsInBlock = pointsToWritePerBlock;
@@ -407,12 +410,8 @@ public class GISData : GISDefinitions {
     /// Initializes the base of the Octree
     /// </summary>
     void SetOctreeBase() {
-        Vector3 oMin = customMin;
-        Vector3 oMax = customMax;
-        if (!useCustomMaxAndMin) {
-            oMin = new Vector3((float)header.xMin, (float)header.zMin, (float)header.yMin);
-            oMax = new Vector3((float)header.xMax, (float)header.zMax, (float)header.yMax);
-        }
+        Vector3 oMin = new Vector3((float)header.xMin, (float)header.zMin, (float)header.yMin);
+        Vector3 oMax = new Vector3((float)header.xMax, (float)header.zMax, (float)header.yMax);
         Vector3 origin = new Vector3((oMax.x + oMin.x) / 2, (oMax.y + oMin.y) / 2, (oMax.z + oMin.z) / 2);
         Vector3 normalMin = Normalize(origin, oMin);
         Vector3 normalMax = Normalize(origin, oMax);
@@ -675,15 +674,13 @@ public class GISData : GISDefinitions {
         //xyz
         float x, y, z;
         //create origin for normalization
-        if (useCustomMaxAndMin) {
-            min = customMin;
-            max = customMax;
-        } else {
-            min = new Vector3((float)header.xMin, (float)header.zMin, (float)header.yMin);
-            max = new Vector3((float)header.xMax, (float)header.zMax, (float)header.yMax);
-        }
+        min = new Vector3((float)header.xMin, (float)header.zMin, (float)header.yMin);
+        max = new Vector3((float)header.xMax, (float)header.zMax, (float)header.yMax);
         origin = new Vector3((max.x + min.x) / 2, (max.y + min.y) / 2, (max.z + min.z) / 2);
-
+        if (useGlobalValues) {
+            globalOrigin = new Vector3((customMin.x + customMax.x) / 2, (customMin.y + customMax.y) / 2, (customMin.z + customMax.z) / 2);
+            globalOffset = globalOrigin - origin;
+        }
         PointData p;
         int splitTimes = 0;
         print("Start time: " + System.DateTime.Now);
