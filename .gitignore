@@ -35,3 +35,5 @@ sysinfo.txt
 *.apk
 *.unitypackage
 *.las
+/StreamingAssets
+/Heightmaps
