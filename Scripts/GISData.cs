@@ -230,7 +230,7 @@ public class GISData : GISDefinitions {
 
             br_pos.BaseStream.Position = (a + (((i) * sizeOfPoint)) + sizeof(int));
             Vector3 realCoor = new Vector3((float)x, (float)y, (float)z);
-            pointsForMesh.Add(Normalize(p.transform.position, Normalize(origin, realCoor)));
+            pointsForMesh.Add(Normalize(p.transform.position + globalOffset, Normalize(origin, realCoor)));
             colors[i] = GetColorFromByte(b);
             indecies[i] = i;
         }
