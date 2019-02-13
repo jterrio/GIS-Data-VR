@@ -66,7 +66,7 @@ public class GISData : GISDefinitions {
             } else {
                 Gizmos.color = new Color(0, 0, 1, 1f);
             }
-            Gizmos.DrawWireCube(oc.Position, new Vector3(octree.smallestTile, octree.smallestTile, octree.smallestTile));
+            Gizmos.DrawWireCube(oc.Position + globalOffset, new Vector3(octree.smallestTile, octree.smallestTile, octree.smallestTile));
 
         }
         //Gizmos.DrawWireCube(origin, max - min);
@@ -357,7 +357,9 @@ public class GISData : GISDefinitions {
     /// <returns>True if visible</returns>
     bool IsVisible(Vector3 point) {
         bool isVisible = false;
+        Camera.main.transform.position -= globalOffset; //return to center
         Vector3 cameraPoint = Camera.main.WorldToViewportPoint(point);
+        Camera.main.transform.position += globalOffset; //return to player
         if ((cameraPoint.x >= -4 && cameraPoint.x <= 5) && (cameraPoint.y >= -4 && cameraPoint.y <= 5) && (cameraPoint.z >= -3)) {
             isVisible = true;
         }
@@ -700,7 +702,7 @@ public class GISData : GISDefinitions {
                 p.coordinates = new Vector3((x * (float)header.xScaleFactor) + (float)header.xOffset, (z * (float)header.zScaleFactor) + (float)header.zOffset, (y * (float)header.yScaleFactor) + (float)header.yOffset);
                 p.LocalPosition = Normalize(origin, p.coordinates);
                 if(i == 0) {
-                    debugPoint = p.LocalPosition;
+                    debugPoint = p.LocalPosition + globalOffset;
                 }
 
 
