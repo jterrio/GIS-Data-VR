@@ -56,7 +56,7 @@ public class GISData : GISDefinitions {
             return;
         }
         foreach (GameObject g in gameObjectPoints) {
-            Vector3 coordinate = octree.GetRoot().FindCoordinateOnOctree(g.transform.position);
+            Vector3 coordinate = octree.GetRoot().FindCoordinateOnOctree(g.transform.position - globalOffset);
             Octree.OctreeNode oc = octree.GetRoot().GetNodeAtCoordinate(coordinate);
             int distance = Distance(lastCoordinatePosition, coordinate);
             if (distance == 0) {
@@ -107,7 +107,7 @@ public class GISData : GISDefinitions {
         
 
         //return;
-        Vector3 coordinate = octree.GetRoot().FindCoordinateOnOctree(player.transform.position);
+        Vector3 coordinate = octree.GetRoot().FindCoordinateOnOctree(player.transform.position - globalOffset);
         FileStream fs;
         Stopwatch stopwatch = new Stopwatch();
         stopwatch.Start();
@@ -151,7 +151,7 @@ public class GISData : GISDefinitions {
 
         //Remove objects in scene which cannot be viewed
         foreach(GameObject g in new List<GameObject>(gameObjectPoints)) {
-            if (!IsVisible(g.transform.position) && lastCoordinatePosition != octree.GetRoot().FindCoordinateOnOctree(g.transform.position)) {
+            if (!IsVisible(g.transform.position) && lastCoordinatePosition != octree.GetRoot().FindCoordinateOnOctree(g.transform.position-globalOffset)) {
                 gameObjectPoints.Remove(g);
                 Destroy(g);
             }
@@ -218,25 +218,29 @@ public class GISData : GISDefinitions {
         Mesh m = new Mesh();
 
         List<Vector3> pointsForMesh = new List<Vector3>();
-        int[] indecies = new int[Mathf.Min(numberOfPoints, pointsInBlock)];
-        Color[] colors = new Color[Mathf.Min(numberOfPoints, pointsInBlock)];
+        List<int> indecies = new List<int>();
+        List<Color> colors = new List<Color>();
 
-
+        int indeciesValue = -1;
         for (int i = 0; i < Mathf.Min(numberOfPoints, pointsInBlock); i++) {
             double x = br_pos.ReadDouble();
             double y = br_pos.ReadDouble();
             double z = br_pos.ReadDouble();
             byte b = br_pos.ReadByte();
-
+            int colorInt = GetIntFromByte(b);
+            if(colorInt <= 1){
+                continue;
+            }
+            indeciesValue++;
             br_pos.BaseStream.Position = (a + (((i) * sizeOfPoint)) + sizeof(int));
             Vector3 realCoor = new Vector3((float)x, (float)y, (float)z);
-            pointsForMesh.Add(Normalize(p.transform.position + globalOffset, Normalize(origin, realCoor)));
-            colors[i] = GetColorFromByte(b);
-            indecies[i] = i;
+            pointsForMesh.Add(Normalize(p.transform.position, Normalize(origin, realCoor)) + globalOffset);
+            colors.Add(GetColorFromByte(colorInt));
+            indecies.Add(indeciesValue);
         }
         m.vertices = pointsForMesh.ToArray();
-        m.SetIndices(indecies, MeshTopology.Points, 0);
-        m.colors = colors;
+        m.SetIndices(indecies.ToArray(), MeshTopology.Points, 0);
+        m.colors = colors.ToArray();
         p.GetComponent<MeshFilter>().mesh = m;
         p.GetComponent<MeshRenderer>().sharedMaterial.SetFloat("_PointSize", pointSize);
         br_pos.Close();
@@ -265,14 +269,17 @@ public class GISData : GISDefinitions {
         }
     }
 
+    int GetIntFromByte(Byte b){
+        return Convert.ToInt32(b);
+    }
+
     /// <summary>
     /// Gets colors from byte, representing the classification
     /// </summary>
     /// <param name="b"></param>
     /// <returns></returns>
-    Color GetColorFromByte(Byte b) {
+    Color GetColorFromByte(int c) {
         Color toReturn = new Color();
-        int c = Convert.ToInt32(b);
         switch (c) {
             case 0: //created, never classified
                 toReturn = Color.white;
@@ -334,7 +341,7 @@ public class GISData : GISDefinitions {
             while (y >= ((int)lastCoordinatePosition.y - viewDistance)) {
                 while (x >= ((int)lastCoordinatePosition.x - viewDistance)) {
                     if (x >= 0 && y >= 0 && z >= 0) {
-                        if ((IsVisible(octree.GetRoot().GetNodeAtCoordinate(new Vector3(x, y, z)).Position) && !positionsToDraw.Contains(new Vector3(x, y, z)))) {
+                        if ((IsVisible(octree.GetRoot().GetNodeAtCoordinate(new Vector3(x, y, z)).Position + globalOffset) && !positionsToDraw.Contains(new Vector3(x, y, z)))) {
                             positionsToDraw.Add(new Vector3(x, y, z));
                         }
                     }
@@ -357,9 +364,7 @@ public class GISData : GISDefinitions {
     /// <returns>True if visible</returns>
     bool IsVisible(Vector3 point) {
         bool isVisible = false;
-        Camera.main.transform.position -= globalOffset; //return to center
         Vector3 cameraPoint = Camera.main.WorldToViewportPoint(point);
-        Camera.main.transform.position += globalOffset; //return to player
         if ((cameraPoint.x >= -4 && cameraPoint.x <= 5) && (cameraPoint.y >= -4 && cameraPoint.y <= 5) && (cameraPoint.z >= -3)) {
             isVisible = true;
         }
@@ -681,7 +686,7 @@ public class GISData : GISDefinitions {
         origin = new Vector3((max.x + min.x) / 2, (max.y + min.y) / 2, (max.z + min.z) / 2);
         if (useGlobalValues) {
             globalOrigin = new Vector3((customMin.x + customMax.x) / 2, (customMin.y + customMax.y) / 2, (customMin.z + customMax.z) / 2);
-            globalOffset = globalOrigin - origin;
+            globalOffset = origin - customMin;//globalOrigin - origin;
         }
         PointData p;
         int splitTimes = 0;
