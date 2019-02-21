@@ -50,6 +50,7 @@ public class GISData : GISDefinitions {
     private Vector3 debugPoint;
     private Vector3 globalOrigin;
     private Vector3 globalOffset;
+    private bool renderAllPoints = false;
 
     private void OnDrawGizmos() {
         if (!renderGizmos) {
@@ -228,7 +229,7 @@ public class GISData : GISDefinitions {
             double z = br_pos.ReadDouble();
             byte b = br_pos.ReadByte();
             int colorInt = GetIntFromByte(b);
-            if(colorInt <= 1){
+            if(colorInt <= 1 && !renderAllPoints) {
                 continue;
             }
             indeciesValue++;
@@ -668,6 +669,29 @@ public class GISData : GISDefinitions {
         StartCoroutine("ReadPoints");
     }
 
+    public void ToggleAllPoints() {
+        renderAllPoints = !renderAllPoints;
+
+        if (!renderAllPoints)
+            pointSize = 1.5f;
+        else
+            pointSize = 0.2f;
+
+        //===================
+        //Resets the point cloud
+        //===================
+
+        //Remove all points in the point cloud
+        foreach (Vector3 position in new List<Vector3>(positionsToDraw)) {
+            positionsToDraw.Remove(position);
+        }
+
+        //Remove all point clouds
+        foreach (GameObject g in new List<GameObject>(gameObjectPoints)) {
+            gameObjectPoints.Remove(g);
+            Destroy(g);
+        }
+    }
 
     /// <summary>
     /// Read points and
