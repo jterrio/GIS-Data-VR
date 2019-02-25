@@ -50,7 +50,7 @@ public class GISData : GISDefinitions {
     private Vector3 debugPoint;
     private Vector3 globalOrigin;
     private Vector3 globalOffset;
-    private bool renderAllPoints = false;
+    public bool renderAllPoints = false;
 
     private void OnDrawGizmos() {
         if (!renderGizmos) {
@@ -175,9 +175,10 @@ public class GISData : GISDefinitions {
     int RenderVector(Vector3 position, int sizeOfPoint) {
         FileStream fs;
         BinaryReader br_pos = new BinaryReader(fs = File.OpenRead((Application.streamingAssetsPath + "/" + fileName + "/" + fileName + "-0" + "/" + fileName + "-0" + ".bin")));
+        Int64 realPosInFile;
         int pointsInBlock;
         int distance = Distance(lastCoordinatePosition, position);
-        Int64 realPos = GetRealPosition(position);
+        Int64 realPos = GetRealPosition(position) * sizeof(Int64);
 
         Vector3 objectPos = octree.GetRoot().GetNodeAtCoordinate(position).Position;
         if (useGlobalValues) {
@@ -197,18 +198,13 @@ public class GISData : GISDefinitions {
 
         p.name = realPos.ToString() + "-" + distance.ToString() + "-" + position.x + "-" + position.y + "-" + position.z;
 
-        Int64 a = realPos * (Int64)(sizeOfPoint * pointsToWritePerBlock);
-        if (a >= br_pos.BaseStream.Length || a < 0) {
-            gameObjectPoints.Remove(p);
-            Destroy(p);
-            return 0;
-        }
-
         p.transform.position = objectPos;
         gameObjectPoints.Add(p);
         p.SetActive(true);
 
-        br_pos.BaseStream.Position = a;
+        br_pos.BaseStream.Position = realPos;
+        realPosInFile = br_pos.ReadInt64();
+        br_pos.BaseStream.Position = realPosInFile;
         int numberOfPoints = br_pos.ReadInt32();
         if (numberOfPoints <= 0) {
             gameObjectPoints.Remove(p);
@@ -233,7 +229,7 @@ public class GISData : GISDefinitions {
                 continue;
             }
             indeciesValue++;
-            br_pos.BaseStream.Position = (a + (((i) * sizeOfPoint)) + sizeof(int));
+            //br_pos.BaseStream.Position = (a + (((i) * sizeOfPoint)) + sizeof(int));
             Vector3 realCoor = new Vector3((float)x, (float)y, (float)z);
             pointsForMesh.Add(Normalize(p.transform.position, Normalize(origin, realCoor)) + globalOffset);
             colors.Add(GetColorFromByte(colorInt));
@@ -430,6 +426,7 @@ public class GISData : GISDefinitions {
     }
 
 
+
     /// <summary>
     /// Shuffles the list to randomize when points are written for LoD
     /// </summary>
@@ -452,13 +449,14 @@ public class GISData : GISDefinitions {
     /// </summary>
     /// <returns></returns>
     IEnumerator WriteToBin() {
+        Int64 headerSize;
         BinaryReader br_pos;
         BinaryWriter bw;
         float tileSize = octree.SmallestTile;
         Vector3 tilePos = Normalize(origin, min);
         int sizeOfPoint = GetSizeOfPoint(header.versionMajor, header.versionMinor, header.pointDataRecordFormat);
         var folder = Directory.CreateDirectory(Application.streamingAssetsPath + "/" + fileName);
-
+        
         //AT MAX DEPTH
         folder = Directory.CreateDirectory(Application.streamingAssetsPath + "/" + fileName + "/" + fileName + "-0");
         FileStream fs = File.Create(Application.streamingAssetsPath + "/" + fileName + "/" + fileName + "-0" + "/" + fileName + "-0" + ".bin");
@@ -470,7 +468,8 @@ public class GISData : GISDefinitions {
 
         //CREATE FILE WITH SOME N LENGTH
         bw = new BinaryWriter(fs = File.OpenWrite((Application.streamingAssetsPath + "/" + fileName + "/" + fileName + "-0" + "/" + fileName + "-0" + ".bin")));
-        bw.BaseStream.Position = (octree.currentLeaves * (Int64)(sizeOfPoint * pointsToWritePerBlock));
+        headerSize = octree.currentLeaves * sizeof(Int64);
+        bw.BaseStream.Position = headerSize;
         bw.Write(0);
         bw.Close();
         fs.Close();
@@ -520,30 +519,35 @@ public class GISData : GISDefinitions {
             foreach (var p in new Dictionary<Int64, List<PointData>>(pointsToWrite)) {
                 
 
-                Int64 a = (p.Key * (Int64)(sizeOfPoint * pointsToWritePerBlock));
+                
+                Int64 h = (p.Key * (Int64)(sizeof(Int64)));
 
-                //READ HOW MANY POINTS
                 br_pos = new BinaryReader(fs = File.OpenRead((Application.streamingAssetsPath + "/" + fileName + "/" + fileName + "-0" + "/" + fileName + "-0" + ".bin")));
-                br_pos.BaseStream.Position = a;
-
-                if (a > br_pos.BaseStream.Length) {
-                    print("Trying to get to: " + a);
-                    print("Realpos: " + p.Key);
-                    print("Length: " + br_pos.BaseStream.Length);
-                    print("On iteration: " + numberOfPointsRead);
+                br_pos.BaseStream.Position = h;
+                Int64 locationOfBlock = br_pos.ReadInt64();
+                if(locationOfBlock == 0) { //is nothing, needs to be set
+                    br_pos.Close();
+                    fs.Close();
+                    bw = new BinaryWriter(fs = File.OpenWrite((Application.streamingAssetsPath + "/" + fileName + "/" + fileName + "-0" + "/" + fileName + "-0" + ".bin")));
+                    Int64 toWriteToHeader = bw.BaseStream.Length;
+                    bw.BaseStream.Position = bw.BaseStream.Length + (sizeOfPoint * pointsToWritePerBlock);
+                    bw.Write(0);
+                    bw.BaseStream.Position = h;
+                    bw.Write(toWriteToHeader);
+                    bw.BaseStream.Position = toWriteToHeader;
+                    bw.Write(p.Value.Count);
+                    bw.BaseStream.Position = toWriteToHeader + sizeof(int);
+                } else { //is set
+                    br_pos.BaseStream.Position = locationOfBlock;
+                    int pointsInBlock = br_pos.ReadInt32();
+                    br_pos.Close();
+                    fs.Close();
+                    Int64 c = locationOfBlock + sizeof(int);
+                    bw = new BinaryWriter(fs = File.OpenWrite((Application.streamingAssetsPath + "/" + fileName + "/" + fileName + "-0" + "/" + fileName + "-0" + ".bin")));
+                    bw.BaseStream.Position = locationOfBlock;
+                    bw.Write(pointsInBlock + p.Value.Count);
+                    bw.BaseStream.Position = c;
                 }
-
-                int numberOfPoints = br_pos.ReadInt32();
-                br_pos.Close();
-                fs.Close();
-
-
-                Int64 c = a + (((numberOfPoints) * sizeOfPoint) + sizeof(int));
-
-                bw = new BinaryWriter(fs = File.OpenWrite((Application.streamingAssetsPath + "/" + fileName + "/" + fileName + "-0" + "/" + fileName + "-0" + ".bin")));
-                bw.BaseStream.Position = a;
-                bw.Write(numberOfPoints + p.Value.Count);
-                bw.BaseStream.Position = c;
 
                 //WRITE POINTS
                 List<PointData> sListOfPoints = ShuffleList(p.Value);
@@ -557,14 +561,6 @@ public class GISData : GISDefinitions {
                 pointsToWrite.Remove(p.Key);
                 bw.Close();
                 fs.Close();
-
-                if (numberOfPoints > pointsToWritePerBlock) {
-
-                    print("Over in bin at " + numberOfPoints);
-                    print("Coordinate at: " + p.Key);
-                    yield return null;
-                    break;
-                }
             }
             
         }
