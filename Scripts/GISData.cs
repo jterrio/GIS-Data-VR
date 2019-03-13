@@ -173,6 +173,11 @@ public class GISData : GISDefinitions {
     }
 
     int RenderVector(Vector3 position, int sizeOfPoint) {
+        float blockLength = Mathf.Pow(2, octree.currentMaxDepth - 1);
+        if(Mathf.Abs(position.x) >= blockLength || Mathf.Abs(position.y) >= blockLength || Mathf.Abs(position.z) >= blockLength) {
+            return 0;
+        }
+
         FileStream fs;
         BinaryReader br_pos = new BinaryReader(fs = File.OpenRead((Application.streamingAssetsPath + "/" + fileName + "/" + fileName + "-0" + "/" + fileName + "-0" + ".bin")));
         Int64 realPosInFile;
@@ -204,6 +209,13 @@ public class GISData : GISDefinitions {
 
         br_pos.BaseStream.Position = realPos;
         realPosInFile = br_pos.ReadInt64();
+
+        if(realPosInFile <= 0) {
+            gameObjectPoints.Remove(p);
+            Destroy(p);
+            return 0;
+        }
+
         br_pos.BaseStream.Position = realPosInFile;
         int numberOfPoints = br_pos.ReadInt32();
         if (numberOfPoints <= 0) {
@@ -494,7 +506,6 @@ public class GISData : GISDefinitions {
             numberOfPointsRead++;
             pd.coordinates = new Vector3((x * (float)header.xScaleFactor) + (float)header.xOffset, (z * (float)header.zScaleFactor) + (float)header.zOffset, (y * (float)header.yScaleFactor) + (float)header.yOffset);
             pd.LocalPosition = Normalize(origin, pd.coordinates);
-
             Int64 tempRealPos = GetRealPosition(octree.GetRoot().FindCoordinateOnOctree(pd.LocalPosition));
             if (pointsToWrite.ContainsKey(tempRealPos)) {
                 pointsToWrite[tempRealPos].Add(pd);
