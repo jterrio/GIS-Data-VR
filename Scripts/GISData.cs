@@ -142,7 +142,7 @@ public class GISData : GISDefinitions {
 
         //Remove duplicates from those that are already drawn
         foreach(Vector3 position in new List<Vector3>(positionsToDraw)) {
-            String positionComp = GetRealPosition(position).ToString() + "-" + Distance(lastCoordinatePosition, position).ToString() + "-" + position.x + "-" + position.y + "-" + position.z;
+            String positionComp = (GetRealPosition(position) * sizeof(Int64)).ToString() + "-" + Distance(lastCoordinatePosition, position).ToString() + "-" + position.x + "-" + position.y + "-" + position.z;
             foreach(GameObject g in gameObjectPoints) {
                 if(g.name == positionComp) {
                     positionsToDraw.Remove(position);
