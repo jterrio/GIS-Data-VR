@@ -118,7 +118,7 @@ public class GISData : GISDefinitions {
         lastCoordinatePosition = coordinate;
         positionsToDraw.Add(coordinate);
 
-        AddFOV();
+        AddFOVNew();
 
         int totalPointsRendered = 0;
         int totalPointsInBin = 0;
@@ -363,6 +363,32 @@ public class GISData : GISDefinitions {
             y = ((int)lastCoordinatePosition.y + viewDistance);
         }
 
+    }
+
+    void AddFOVNew() {
+
+        float cameraBuffer = 1f;
+
+        Vector3 centerCameraWorldPosition = Camera.main.ViewportToWorldPoint(new Vector3(0.5f, 0.5f, viewDistance));
+        Vector3 smallestTileOffset = Camera.main.WorldToViewportPoint(centerCameraWorldPosition + new Vector3(octree.smallestTile, 0, 0));
+        float frustumTileOffset = Mathf.Abs(0.5f - smallestTileOffset.x);
+
+        Vector3 startPosition = new Vector3(-(frustumTileOffset), -(frustumTileOffset), 0);
+
+        while (startPosition.z <= (frustumTileOffset * viewDistance)) {
+            while (startPosition.y <= ( 1 + frustumTileOffset + cameraBuffer)) {
+                while (startPosition.x <= (1 + frustumTileOffset + cameraBuffer)) {
+                    Vector3 worldPoint = Camera.main.ViewportToWorldPoint(startPosition);
+                    Vector3 coordinateWorldPoint = octree.GetRoot().FindCoordinateOnOctree(worldPoint);
+                    if (!positionsToDraw.Contains(coordinateWorldPoint)) {
+                        positionsToDraw.Add(coordinateWorldPoint);
+                    }
+                    startPosition = new Vector3(startPosition.x + frustumTileOffset, startPosition.y, startPosition.z);
+                }
+                startPosition = new Vector3(-(frustumTileOffset), startPosition.y + frustumTileOffset, startPosition.z); ;
+            }
+            startPosition = new Vector3(startPosition.x, -(frustumTileOffset), startPosition.z + frustumTileOffset); ;
+        }
     }
 
 
