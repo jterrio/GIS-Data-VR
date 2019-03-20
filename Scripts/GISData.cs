@@ -51,6 +51,10 @@ public class GISData : GISDefinitions {
     private Vector3 globalOrigin;
     private Vector3 globalOffset;
     public bool renderAllPoints = false;
+    private float frustumTileOffsetFarClippingPlane;
+    private float frustumTileOffsetNearClippingPlane;
+    public int cameraBufferOnFOV = 2;
+    public int visibleCameraBuffer = 4;
 
     private void OnDrawGizmos() {
         if (!renderGizmos) {
@@ -88,6 +92,8 @@ public class GISData : GISDefinitions {
 
         ReadHeader();
         SetOctreeBase();
+
+
     }
 
 
@@ -118,7 +124,17 @@ public class GISData : GISDefinitions {
         lastCoordinatePosition = coordinate;
         positionsToDraw.Add(coordinate);
 
+        Vector3 centerCameraWorldPositionFar = Camera.main.ViewportToWorldPoint(new Vector3(0.5f, 0.5f, viewDistance));
+        Vector3 smallestTileOffsetFar = Camera.main.WorldToViewportPoint(centerCameraWorldPositionFar + new Vector3(octree.smallestTile, 0, 0));
+        frustumTileOffsetFarClippingPlane = Mathf.Abs(0.5f - smallestTileOffsetFar.x) / 2;
+
+        Vector3 centerCameraWorldPositionNear = Camera.main.ViewportToWorldPoint(new Vector3(0.5f, 0.5f, 0));
+        Vector3 smallestTileOffsetNear = Camera.main.WorldToViewportPoint(centerCameraWorldPositionNear + new Vector3(octree.smallestTile, 0, 0));
+        frustumTileOffsetNearClippingPlane = Mathf.Abs(0.5f - smallestTileOffsetNear.x) * 2;
+
+
         AddFOVNew();
+
 
         int totalPointsRendered = 0;
         int totalPointsInBin = 0;
@@ -152,6 +168,7 @@ public class GISData : GISDefinitions {
 
         //Remove objects in scene which cannot be viewed
         foreach(GameObject g in new List<GameObject>(gameObjectPoints)) {
+            Vector3 test = octree.GetRoot().FindCoordinateOnOctree(g.transform.position - globalOffset);
             if (!IsVisible(g.transform.position) && lastCoordinatePosition != octree.GetRoot().FindCoordinateOnOctree(g.transform.position-globalOffset)) {
                 gameObjectPoints.Remove(g);
                 Destroy(g);
@@ -367,27 +384,23 @@ public class GISData : GISDefinitions {
 
     void AddFOVNew() {
 
-        float cameraBuffer = 1f;
+       
 
-        Vector3 centerCameraWorldPosition = Camera.main.ViewportToWorldPoint(new Vector3(0.5f, 0.5f, viewDistance));
-        Vector3 smallestTileOffset = Camera.main.WorldToViewportPoint(centerCameraWorldPosition + new Vector3(octree.smallestTile, 0, 0));
-        float frustumTileOffset = Mathf.Abs(0.5f - smallestTileOffset.x);
+        Vector3 startPosition = new Vector3(-(frustumTileOffsetFarClippingPlane * cameraBufferOnFOV), -(frustumTileOffsetFarClippingPlane * cameraBufferOnFOV), -cameraBufferOnFOV);
 
-        Vector3 startPosition = new Vector3(-(frustumTileOffset), -(frustumTileOffset), 0);
-
-        while (startPosition.z <= (frustumTileOffset * viewDistance)) {
-            while (startPosition.y <= ( 1 + frustumTileOffset + cameraBuffer)) {
-                while (startPosition.x <= (1 + frustumTileOffset + cameraBuffer)) {
+        while (startPosition.z <= viewDistance) {
+            while (startPosition.y <= ( 1 + (frustumTileOffsetFarClippingPlane * cameraBufferOnFOV))) {
+                while (startPosition.x <= (1 + (frustumTileOffsetFarClippingPlane * cameraBufferOnFOV))) {
                     Vector3 worldPoint = Camera.main.ViewportToWorldPoint(startPosition);
                     Vector3 coordinateWorldPoint = octree.GetRoot().FindCoordinateOnOctree(worldPoint);
                     if (!positionsToDraw.Contains(coordinateWorldPoint)) {
                         positionsToDraw.Add(coordinateWorldPoint);
                     }
-                    startPosition = new Vector3(startPosition.x + frustumTileOffset, startPosition.y, startPosition.z);
+                    startPosition = new Vector3(startPosition.x + frustumTileOffsetFarClippingPlane, startPosition.y, startPosition.z);
                 }
-                startPosition = new Vector3(-(frustumTileOffset), startPosition.y + frustumTileOffset, startPosition.z); ;
+                startPosition = new Vector3(-(frustumTileOffsetFarClippingPlane), startPosition.y + frustumTileOffsetFarClippingPlane, startPosition.z); ;
             }
-            startPosition = new Vector3(startPosition.x, -(frustumTileOffset), startPosition.z + frustumTileOffset); ;
+            startPosition = new Vector3(startPosition.x, -(frustumTileOffsetFarClippingPlane), startPosition.z + frustumTileOffsetFarClippingPlane); ;
         }
     }
 
@@ -400,7 +413,7 @@ public class GISData : GISDefinitions {
     bool IsVisible(Vector3 point) {
         bool isVisible = false;
         Vector3 cameraPoint = Camera.main.WorldToViewportPoint(point);
-        if ((cameraPoint.x >= -4 && cameraPoint.x <= 5) && (cameraPoint.y >= -4 && cameraPoint.y <= 5) && (cameraPoint.z >= -3)) {
+        if ((cameraPoint.x >= (-(frustumTileOffsetNearClippingPlane * cameraBufferOnFOV * visibleCameraBuffer)) && cameraPoint.x <= (1 + (frustumTileOffsetNearClippingPlane * cameraBufferOnFOV * visibleCameraBuffer)) && (cameraPoint.y >= (-(frustumTileOffsetNearClippingPlane * cameraBufferOnFOV * visibleCameraBuffer)) && cameraPoint.y <= (1 + (frustumTileOffsetNearClippingPlane * cameraBufferOnFOV * visibleCameraBuffer)))  &&  cameraPoint.z >= octree.smallestTile * -2)) {
             isVisible = true;
         }
         return isVisible;
