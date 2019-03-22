@@ -30,7 +30,7 @@ public class GISData : GISDefinitions {
     [Header("Octree Settings")]
     public Octree octree;
     private Vector3 min, max, origin;
-    public int pointsToWritePerBlock = 1000;
+    public int pointsToWritePerBlock = 10000;
     private bool finishedCreatingBin = false;
 
     [Header("User Settings")]
@@ -50,11 +50,14 @@ public class GISData : GISDefinitions {
     private Vector3 debugPoint;
     private Vector3 globalOrigin;
     private Vector3 globalOffset;
-    public bool renderAllPoints = false;
     private float frustumTileOffsetFarClippingPlane;
     private float frustumTileOffsetNearClippingPlane;
+
+    [Header("Render Settings")]
     public int cameraBufferOnFOV = 2;
     public int visibleCameraBuffer = 4;
+    public bool renderAllPoints = false;
+    private List<GameObject> tests = new List<GameObject>();
 
     private void OnDrawGizmos() {
         if (!renderGizmos) {
@@ -134,7 +137,7 @@ public class GISData : GISDefinitions {
 
 
         AddFOVNew();
-
+     
 
         int totalPointsRendered = 0;
         int totalPointsInBin = 0;
@@ -384,23 +387,38 @@ public class GISData : GISDefinitions {
 
     void AddFOVNew() {
 
-       
+        if (frustumTileOffsetFarClippingPlane < 0.1f) {
+            frustumTileOffsetFarClippingPlane = 0.1f;
+        }
+        if (frustumTileOffsetNearClippingPlane < 0.1f) {
+            frustumTileOffsetNearClippingPlane = 0.1f;
+        }
 
         Vector3 startPosition = new Vector3(-(frustumTileOffsetFarClippingPlane * cameraBufferOnFOV), -(frustumTileOffsetFarClippingPlane * cameraBufferOnFOV), -cameraBufferOnFOV);
+
+        foreach(GameObject g in tests) {
+            Destroy(g);
+        }
+        tests.Clear();
+        
 
         while (startPosition.z <= viewDistance) {
             while (startPosition.y <= ( 1 + (frustumTileOffsetFarClippingPlane * cameraBufferOnFOV))) {
                 while (startPosition.x <= (1 + (frustumTileOffsetFarClippingPlane * cameraBufferOnFOV))) {
                     Vector3 worldPoint = Camera.main.ViewportToWorldPoint(startPosition);
+                    GameObject ball = Instantiate(point);
+                    ball.transform.position = worldPoint;
+                    ball.transform.localScale = new Vector3(3, 3, 3);
+                    tests.Add(ball);
                     Vector3 coordinateWorldPoint = octree.GetRoot().FindCoordinateOnOctree(worldPoint);
                     if (!positionsToDraw.Contains(coordinateWorldPoint)) {
                         positionsToDraw.Add(coordinateWorldPoint);
                     }
                     startPosition = new Vector3(startPosition.x + frustumTileOffsetFarClippingPlane, startPosition.y, startPosition.z);
                 }
-                startPosition = new Vector3(-(frustumTileOffsetFarClippingPlane), startPosition.y + frustumTileOffsetFarClippingPlane, startPosition.z); ;
+                startPosition = new Vector3(-(frustumTileOffsetFarClippingPlane * cameraBufferOnFOV), startPosition.y + frustumTileOffsetFarClippingPlane, startPosition.z); ;
             }
-            startPosition = new Vector3(startPosition.x, -(frustumTileOffsetFarClippingPlane), startPosition.z + frustumTileOffsetFarClippingPlane); ;
+            startPosition = new Vector3(startPosition.x, -(frustumTileOffsetFarClippingPlane * cameraBufferOnFOV), startPosition.z + 1); ;
         }
     }
 
@@ -411,6 +429,7 @@ public class GISData : GISDefinitions {
     /// <param name="point"></param>
     /// <returns>True if visible</returns>
     bool IsVisible(Vector3 point) {
+        return true;
         bool isVisible = false;
         Vector3 cameraPoint = Camera.main.WorldToViewportPoint(point);
         if ((cameraPoint.x >= (-(frustumTileOffsetNearClippingPlane * cameraBufferOnFOV * visibleCameraBuffer)) && cameraPoint.x <= (1 + (frustumTileOffsetNearClippingPlane * cameraBufferOnFOV * visibleCameraBuffer)) && (cameraPoint.y >= (-(frustumTileOffsetNearClippingPlane * cameraBufferOnFOV * visibleCameraBuffer)) && cameraPoint.y <= (1 + (frustumTileOffsetNearClippingPlane * cameraBufferOnFOV * visibleCameraBuffer)))  &&  cameraPoint.z >= octree.smallestTile * -2)) {
