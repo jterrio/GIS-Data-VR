@@ -20,6 +20,9 @@ public enum OctreeIndex {
     TopLeftBack = 5 //101
 }
 
+/// <summary>
+/// Octree class/data structure
+/// </summary>
 [System.Serializable]
 public class Octree {
     private OctreeNode node; //root
@@ -31,6 +34,12 @@ public class Octree {
     public float smallestTile;
     public bool hasSplit = true; //set to true for init
 
+    /// <summary>
+    /// 
+    /// </summary>
+    /// <param name="position">Position in world space of the node</param>
+    /// <param name="size">Size of the bounds</param>
+    /// <param name="maxPointSize">Max number of points in node</param>
     public Octree(Vector3 position, float size, int maxPointSize) {
         node = new OctreeNode(position, size, "0", this);
         this.maxPointSize = maxPointSize;
@@ -72,6 +81,13 @@ public class Octree {
         private OctreeNode[] subNodes;
         private List<GISDefinitions.PointData> data;
 
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="pos">Position in world space</param>
+        /// <param name="size">Size of bounds</param>
+        /// <param name="index">Position within the tree</param>
+        /// <param name="tree">Tree it is apart of</param>
         public OctreeNode(Vector3 pos, float size, string index, Octree tree) {
             this.tree = tree;
             position = pos;
@@ -154,6 +170,13 @@ public class Octree {
             }
         }
 
+        /// <summary>
+        /// Recursive call for FindCoodinateOnOctree
+        /// </summary>
+        /// <param name="returnVector"></param>
+        /// <param name="point"></param>
+        /// <param name="depth"></param>
+        /// <returns></returns>
         Vector3 FindCoordinateOnOctreeRecursive(Vector3 returnVector, Vector3 point, int depth) {
             Vector3 toReturnVector;
             switch (GetIndexOfPosition(point)) {
@@ -296,6 +319,13 @@ public class Octree {
             }
         }
 
+        /// <summary>
+        /// Recursive call for FindLeafOnOctree
+        /// </summary>
+        /// <param name="returnVector"></param>
+        /// <param name="point"></param>
+        /// <param name="depth"></param>
+        /// <returns></returns>
         OctreeNode FindLeafOnOctreeRecursive(Vector3 returnVector, Vector3 point, int depth) {
             Vector3 toReturnVector;
             switch (GetIndexOfPosition(point)) {
@@ -686,16 +716,11 @@ public class Octree {
         }
 
     }
-
-    private int GetIndexOfPosition(Vector3 lookupPosition, Vector3 nodePosition) {
-        int index = 0;
-        
-
-
-        return index;
-    }
-
-
+    
+    /// <summary>
+    /// Get root node of given octree
+    /// </summary>
+    /// <returns></returns>
     public OctreeNode GetRoot() {
         return node;
     }
