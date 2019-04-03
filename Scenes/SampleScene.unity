@@ -777,7 +777,7 @@ MonoBehaviour:
     numberOfExtendedVariableLengthRecords: 0
     numberOfPointRecords: 0
     numberOfPointsByReturn: 
-  useCustomMaxAndMin: 0
+  useGlobalValues: 0
   customMin: {x: 0, y: 0, z: 0}
   customMax: {x: 0, y: 0, z: 0}
   point: {fileID: 1308686475757576, guid: ac8388e0e69ab6d46acee73370f12b8e, type: 3}
@@ -792,11 +792,14 @@ MonoBehaviour:
   pointsToWritePerBlock: 10000
   player: {fileID: 880019966}
   lastCoordinatePosition: {x: 0, y: 0, z: 0}
-  viewDistance: 4
+  viewDistance: 50
   readyToRender: 1
   makeBin: 0
   pointSize: 0.05
   renderGizmos: 1
+  cameraBufferOnFOV: 2
+  visibleCameraBuffer: 4
+  renderAllPoints: 1
 --- !u!4 &1051520729
 Transform:
   m_ObjectHideFlags: 0
