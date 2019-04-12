@@ -368,11 +368,11 @@ public class GISData : GISDefinitions {
 
         Vector3 startPosition = new Vector3(-(frustumTileOffsetFarClippingPlane * cameraBufferOnFOV), -(frustumTileOffsetFarClippingPlane * cameraBufferOnFOV), -cameraBufferOnFOV);
 
-        while (startPosition.z <= viewDistance) {
+        while (startPosition.z <= (viewDistance*octree.smallestTile) ) {
             while (startPosition.y <= ( 1 + (frustumTileOffsetFarClippingPlane * cameraBufferOnFOV))) {
                 while (startPosition.x <= (1 + (frustumTileOffsetFarClippingPlane * cameraBufferOnFOV))) {
                     Vector3 worldPoint = Camera.main.ViewportToWorldPoint(startPosition);
-                    Vector3 coordinateWorldPoint = octree.GetRoot().FindCoordinateOnOctree(worldPoint);
+                    Vector3 coordinateWorldPoint = octree.GetRoot().FindCoordinateOnOctree(worldPoint - globalOffset);
                     if (!positionsToDraw.Contains(coordinateWorldPoint)) {
                         positionsToDraw.Add(coordinateWorldPoint);
                     }
